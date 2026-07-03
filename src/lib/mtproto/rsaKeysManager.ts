@@ -14,7 +14,8 @@ import bigInt from 'big-integer';
 
 export type RSAPublicKeyHex = {
   modulus: string,
-  exponent: string
+  exponent: string,
+  fingerprintAliases?: string[]
 };
 
 export class RSAKeysManager {
@@ -71,6 +72,11 @@ export class RSAKeysManager {
     // modulus: '00e8bb3305c0b52c6cf2afdf7637313489e63e05268e5badb601af417786472e5f93b85438968e20e6729a301c0afc121bf7151f834436f7fda680847a66bf64accec78ee21c0b316f0edafe2f41908da7bd1f4a5107638eeb67040ace472a14f90d9f7c2b7def99688ba3073adb5750bb02964902a359fe745d8170e36876d4fd8a5d41b2a76cbff9a13267eb9580b2d06d10357448d20d9da2191cb5d8c93982961cdfdeda629e37f1fb09a0722027696032fe61ed663db7a37f6f263d370f69db53a0dc0a1748bdaaff6209d5645485e6e001d1953255757e4b8e42813347b11da6ab500fd0ace7e6dfa3736199ccaf9397ed0745a427dcfa6cd67bcb1acff3',
     modulus: 'e8bb3305c0b52c6cf2afdf7637313489e63e05268e5badb601af417786472e5f93b85438968e20e6729a301c0afc121bf7151f834436f7fda680847a66bf64accec78ee21c0b316f0edafe2f41908da7bd1f4a5107638eeb67040ace472a14f90d9f7c2b7def99688ba3073adb5750bb02964902a359fe745d8170e36876d4fd8a5d41b2a76cbff9a13267eb9580b2d06d10357448d20d9da2191cb5d8c93982961cdfdeda629e37f1fb09a0722027696032fe61ed663db7a37f6f263d370f69db53a0dc0a1748bdaaff6209d5645485e6e001d1953255757e4b8e42813347b11da6ab500fd0ace7e6dfa3736199ccaf9397ed0745a427dcfa6cd67bcb1acff3',
     exponent: '010001'
+  }, {
+    // slerv production MTProto RSA key for safelink.chat.
+    modulus: 'e47c14defb95087062424e8a6339d4f18b9a08005852d425ab95db1c0d3b0d2f8b3ab9ec678cc5777bb3f01f93cff6626792cbaa850b13ebe03c3b782fdbb256031a958c6454f468186faf2c6456cc615f89036684d36ba6e0b199924c4e776e4c66f874df71f98ca7256624a4e8d2c910fbbaecca11a76dd623b58862f1353c9f518c5c4d0bc0aa8a9fcbf82f82641770af9848876242adb7ecf232360dff48a285f32b5b7629b2ff789edd6f1c6275241be9baf6162d955e0494f31c7d02af1652a487c2221cb24557a30a4d3f32ed5faa6064519d26ca23a5cae69a7c32807f0ec1b437930da6e068f83ef0031d1240ce3cca450443560db11ae3d00f6aa3',
+    exponent: '010001',
+    fingerprintAliases: ['d3f4d3937928bfc5']
   }];
 
   private publicKeysParsed: {
@@ -102,10 +108,15 @@ export class RSAKeysManager {
         const fingerprintBytes = bytes.slice(-8);
         fingerprintBytes.reverse();
 
-        this.publicKeysParsed[bytesToHex(fingerprintBytes).toLowerCase()] = {
+        const publicKey = {
           modulus: keyParsed.modulus,
           exponent: keyParsed.exponent
         };
+
+        this.publicKeysParsed[bytesToHex(fingerprintBytes).toLowerCase()] = publicKey;
+        keyParsed.fingerprintAliases?.forEach((fingerprint) => {
+          this.publicKeysParsed[fingerprint.toLowerCase()] = publicKey;
+        });
       });
     })).then(() => {
       this.prepared = true;

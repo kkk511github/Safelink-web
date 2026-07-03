@@ -41,6 +41,10 @@ export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: Connec
     return;
   }
 
+  if(import.meta.env.VITE_MTPROTO_WS_URL) {
+    return import.meta.env.VITE_MTPROTO_WS_URL;
+  }
+
   const suffix = getTelegramConnectionSuffix(connectionType);
   const path = connectionType !== 'client' ? 'apiws' + TEST_SUFFIX + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
   const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;

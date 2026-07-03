@@ -12,6 +12,7 @@ interface ImportMetaEnv {
   readonly VITE_MTPROTO_SW: string;
   readonly VITE_MTPROTO_HTTP: string;
   readonly VITE_MTPROTO_HTTP_UPLOAD: string;
+  readonly VITE_MTPROTO_WS_URL?: string;
   readonly VITE_MTPROTO_AUTO: string;
   readonly VITE_MTPROTO_HAS_HTTP: string;
   readonly VITE_MTPROTO_HAS_WS: string;
