@@ -15,6 +15,7 @@ import Section from '@components/section';
 import {useAppSettings} from '@stores/appSettings';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import App from '@config/app';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — translation toggles + "Do not translate" picker
@@ -104,7 +105,7 @@ const LanguageListSection = () => {
 
   promiseCollector.collect((async() => {
     const langs1 = await rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-      lang_pack: 'web'
+      lang_pack: App.langPack
     });
     // macos langpack disabled in legacy tab — kept the structure for parity
     const langs2: LangPackLanguage[] = [];

@@ -1668,7 +1668,7 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
+  t.textContent = `SafeLink Web${App.suffix} ${App.version} (${App.build})`;
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

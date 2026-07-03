@@ -194,7 +194,7 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
     }
 
     const tag = 'fix';
-    const notificationPromise = ctx.registration.showNotification('Telegram Web', {
+    const notificationPromise = ctx.registration.showNotification('SafeLink Web', {
       body: _lang.push_message_error,
       icon: NOTIFICATION_ICON_PATH,
       tag,
@@ -424,7 +424,7 @@ function fireNotification(
 ) {
   obj = fillPushObject(obj);
   const peerId = obj.custom.peerId;
-  let title = obj.title || 'Telegram';
+  let title = obj.title || 'SafeLink';
   let body = obj.description || '';
   let tag = 'peer' + peerId;
 
@@ -437,7 +437,7 @@ function fireNotification(
   }
 
   if(settings?.nopreview || !obj.loc_key) {
-    title = 'Telegram';
+    title = 'SafeLink';
     body = lang.push_message_nopreview;
     tag = 'unknown_peer';
   }

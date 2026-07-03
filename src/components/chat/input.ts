@@ -242,6 +242,7 @@ export default class ChatInput {
 
   private btnAutoDeletePeriod: HTMLElement;
   private btnSendGift: HTMLButtonElement;
+  private recentDocumentSends = new Map<string, number>();
 
   private sendMenu: SendMenu;
 
@@ -4304,6 +4305,9 @@ export default class ChatInput {
     ignoreNoPremium?: boolean
   }) {
     document = await this.managers.appDocsManager.getDoc(document);
+    if(!document) {
+      return false;
+    }
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
     if(this.chat.peerId.isAnyChat() && !(await this.chat.canSend(flag))) {
@@ -4313,10 +4317,6 @@ export default class ChatInput {
 
     if(this.chat.type === ChatType.Scheduled && !force) {
       this.scheduleSending(() => this.sendMessageWithDocument({document, force: true, clearDraft, silent, target}));
-      return false;
-    }
-
-    if(!document) {
       return false;
     }
 
@@ -4333,6 +4333,18 @@ export default class ChatInput {
     })) {
       return false;
     }
+
+    const sendGuardKey = `${this.chat.peerId}:${document.id}:${clearDraft ? 1 : 0}:${silent ? 1 : 0}`;
+    const sendGuardNow = tsNow();
+    if((sendGuardNow - (this.recentDocumentSends.get(sendGuardKey) || 0)) < 750) {
+      return true;
+    }
+    this.recentDocumentSends.set(sendGuardKey, sendGuardNow);
+    setTimeout(() => {
+      if(this.recentDocumentSends.get(sendGuardKey) === sendGuardNow) {
+        this.recentDocumentSends.delete(sendGuardKey);
+      }
+    }, 1000);
 
     const sendingParams = this.chat.getMessageSendingParams();
 

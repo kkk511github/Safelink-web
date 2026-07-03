@@ -192,10 +192,9 @@ namespace I18n {
   }
 
   export function loadLangPack(langCode: string, web?: boolean, ignoreCache?: boolean) {
-    web = true;
     const managers = rootScope.managers;
     return Promise.all([
-      managers.appLangPackManager.getLangPack(langCode, web ? 'web' : App.langPack, ignoreCache),
+      managers.appLangPackManager.getLangPack(langCode, App.langPack, ignoreCache),
       !web && managers.appLangPackManager.getLangPack(langCode, 'android', ignoreCache),
       import('../lang'),
       import('../langSign'),

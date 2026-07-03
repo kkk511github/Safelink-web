@@ -22,7 +22,7 @@ const App = {
   build: +import.meta.env.VITE_BUILD,
   langPackVersion: +import.meta.env.VITE_LANG_PACK_VERSION,
   langPackLocalVersion: langPackLocalVersion,
-  langPack: 'webk',
+  langPack: 'weba',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,
   baseDcId: 2 as TrueDcId,
