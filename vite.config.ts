@@ -9,7 +9,7 @@ import checker from 'vite-plugin-checker';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
-import {existsSync, copyFileSync, readFileSync} from 'fs';
+import {cpSync, existsSync, copyFileSync, mkdirSync, readFileSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import path from 'path';
@@ -127,6 +127,55 @@ if(USE_OWN_SOLID) {
   console.log('using original solid');
 }
 
+const PUBLIC_STATIC_DIRS = [
+  'assets',
+  'changelogs'
+];
+
+const PUBLIC_STATIC_FILES = [
+  'site.webmanifest',
+  'site_apple.webmanifest',
+  'version',
+  'rlottie-wasm.js',
+  'rlottie-wasm.wasm',
+  'recorder.min.js',
+  'waveWorker.min.js',
+  'encoderWorker.min.js',
+  'encoderWorker.min.wasm',
+  'decoderWorker.min.js',
+  'decoderWorker.min.wasm'
+];
+
+function copySafePublicAssetsPlugin() {
+  return {
+    name: 'copy-safe-public-assets',
+    apply: 'build' as const,
+    closeBundle() {
+      const outDir = path.join(rootDir, 'dist');
+
+      for(const dir of PUBLIC_STATIC_DIRS) {
+        const from = path.join(rootDir, 'public', dir);
+        if(!existsSync(from)) {
+          continue;
+        }
+
+        cpSync(from, path.join(outDir, dir), {recursive: true, force: true});
+      }
+
+      for(const file of PUBLIC_STATIC_FILES) {
+        const from = path.join(rootDir, 'public', file);
+        if(!existsSync(from)) {
+          continue;
+        }
+
+        const to = path.join(outDir, file);
+        mkdirSync(path.dirname(to), {recursive: true});
+        copyFileSync(from, to);
+      }
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
     // devtools({
@@ -155,7 +204,8 @@ export default defineConfig({
     process.env.ANALYZE ? visualizer({
       gzipSize: true,
       template: 'treemap'
-    }) : undefined
+    }) : undefined,
+    copySafePublicAssetsPlugin()
   ].filter(Boolean),
   test: {
     // include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
