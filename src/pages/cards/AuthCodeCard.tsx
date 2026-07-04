@@ -2,7 +2,6 @@ import {JSX, Show, createSignal, onCleanup, onMount} from 'solid-js';
 
 import CodeInputFieldCompat from '@components/codeInputField';
 import Icon from '@components/icon';
-import TrackingMonkey from '@components/monkeys/tracking';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
 import {SimpleConfirmationPopup} from '@components/popups/simpleConfirmation';
 import MediaHeader from '@components/mediaHeader';
@@ -31,8 +30,21 @@ if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'authCode'}>;
 
+const safelinkLoginCodeLength = 5;
+
+function getAuthCodeLength(type: AuthSentCodeType) {
+  const rawLength = (type as AuthSentCodeType.authSentCodeTypeApp | AuthSentCodeType.authSentCodeTypeEmailCode).length;
+  const length = typeof rawLength === 'number' && rawLength > 0 ? rawLength : safelinkLoginCodeLength;
+
+  if(type._ === 'auth.sentCodeTypeApp' && length > safelinkLoginCodeLength) {
+    return safelinkLoginCodeLength;
+  }
+
+  return length;
+}
+
 /**
- * Card variant of `pageAuthCode`. Shows the 6-digit code input under either a
+ * Card variant of `pageAuthCode`. Shows the verification code input under either a
  * `TrackingMonkey` (default) or a Jolly Roger lottie (`fragmentSms`). Branches:
  *
  * - `auth.signIn` → success → IM
@@ -59,7 +71,6 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   const stickerHost = document.createElement('div');
   const stickerSize = mediaSizes.isMobile ? 100 : 130;
 
-  let monkey: TrackingMonkey | undefined;
   let player: RLottiePlayer | undefined;
   let resetEmailTimer: number | undefined;
 
@@ -78,7 +89,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
 
   /* ---------- code input ---------- */
 
-  const initialLength = (sentCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
+  const initialLength = getAuthCodeLength(sentCode.type);
   const codeInputField = new CodeInputFieldCompat({
     length: initialLength,
     onChange: () => {
@@ -153,7 +164,6 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   /* ---------- animation (rebuilt on every type change) ---------- */
 
   function rebuildAnimation() {
-    monkey?.remove(); monkey = undefined;
     player?.remove(); player = undefined;
     stickerHost.replaceChildren();
 
@@ -173,9 +183,17 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       }).then(() => {});
     }
 
-    monkey = new TrackingMonkey(codeInputField, stickerSize);
-    stickerHost.append(monkey.container);
-    return monkey.load();
+    const logo = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    logo.setAttribute('viewBox', '0 0 160 160');
+    logo.style.width = `${stickerSize}px`;
+    logo.style.height = `${stickerSize}px`;
+
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#logo');
+    logo.append(use);
+    stickerHost.append(logo);
+
+    return Promise.resolve();
   }
 
   /* ---------- email reset flow ---------- */
@@ -249,8 +267,8 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   /* ---------- apply current `sentCode` to DOM (subtitle, phone, length, animation, state) ---------- */
 
   function applySentCode() {
-    const length = (sentCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
-    codeInputField.options.length = length;
+    const length = getAuthCodeLength(sentCode.type);
+    codeInputField.length = length;
     codeInputField.value = '';
 
     phoneEl.innerText = sentCode.phone_number ?? '';
@@ -311,7 +329,6 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   onCleanup(() => {
     cancelFocus?.();
     if(resetEmailTimer) clearTimeout(resetEmailTimer);
-    monkey?.remove();
     player?.remove();
     codeInputField.cleanup();
   });

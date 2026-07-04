@@ -8,6 +8,7 @@
 import type {TransportType} from '@lib/mtproto/dcConfigurator';
 
 const searchParams = new URLSearchParams(location.search);
+const hasCustomMtprotoWebSocket = !!import.meta.env.VITE_MTPROTO_WS_URL;
 
 const Modes = {
   test: searchParams.get('test') === '1'/*  || true */,
@@ -26,7 +27,7 @@ const Modes = {
   // Triggers: ?noWorker=1 in the URL, or VITE_NO_WORKER injected at build time
   // by `bash scripts/start-preview.sh --no-worker`.
   noWorker: location.search.indexOf('noWorker=1') > 0 || !!import.meta.env.VITE_NO_WORKER,
-  multipleTransports: !!(import.meta.env.VITE_MTPROTO_AUTO && import.meta.env.VITE_MTPROTO_HAS_HTTP && import.meta.env.VITE_MTPROTO_HAS_WS) && location.search.indexOf('noMultipleTransports=1') === -1,
+  multipleTransports: !hasCustomMtprotoWebSocket && !!(import.meta.env.VITE_MTPROTO_AUTO && import.meta.env.VITE_MTPROTO_HAS_HTTP && import.meta.env.VITE_MTPROTO_HAS_WS) && location.search.indexOf('noMultipleTransports=1') === -1,
   noPfs: true || location.search.indexOf('noPfs=1') > 0
 };
 

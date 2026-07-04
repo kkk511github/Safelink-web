@@ -2,12 +2,12 @@ import styles from '@components/codeInputField.module.scss';
 import classNames from '@helpers/string/classNames';
 import {children, createRoot, createSignal, Index, Ref, Show, Signal} from 'solid-js';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
-import {Transition} from '@vendor/solid-transition-group';
 
 export default class CodeInputFieldCompat {
   public container: HTMLDivElement;
-  public input: HTMLInputElement;
+  public input!: HTMLInputElement;
   private dispose: () => void;
+  private lengthSignal!: Signal<number>;
   private errorSignal!: Signal<boolean>;
   private disabledSignal!: Signal<boolean>;
   private valueSignal!: Signal<string>;
@@ -18,6 +18,7 @@ export default class CodeInputFieldCompat {
     onFill?: (code: string) => void,
     class?: string
   }) {
+    this.lengthSignal = createSignal(options.length);
     this.errorSignal = createSignal(false);
     this.disabledSignal = createSignal(false);
     this.valueSignal = createSignal('');
@@ -26,7 +27,10 @@ export default class CodeInputFieldCompat {
       const el = (
         <CodeInputField
           {...options}
-          ref={this.input}
+          length={this.lengthSignal[0]()}
+          ref={(el) => {
+            this.input = el;
+          }}
           error={this.errorSignal[0]()}
           disabled={this.disabledSignal[0]()}
           valueSignal={this.valueSignal}
@@ -34,6 +38,15 @@ export default class CodeInputFieldCompat {
       );
       return children(() => el)() as HTMLDivElement;
     });
+  }
+
+  set length(value: number) {
+    this.options.length = value;
+    this.lengthSignal[1](value);
+  }
+
+  get length() {
+    return this.lengthSignal[0]();
   }
 
   set error(value: boolean) {
@@ -202,7 +215,7 @@ export function CodeInputField(props: {
         autocomplete="one-time-code"
         required
         spellcheck={false}
-        pattern="^\d*$"
+        pattern="^\\d*$"
         value={value()}
         disabled={props.disabled}
         onFocus={() => {
@@ -275,13 +288,11 @@ export function CodeInputField(props: {
               (activeIndexStart() <= idx && idx < activeIndexEnd()) && styles.active
             )}
           >
-            <Transition>
-              <Show when={value()[idx]}>
-                <div class={styles.digitContent}>
-                  {value()[idx]}
-                </div>
-              </Show>
-            </Transition>
+            <Show when={value()[idx]}>
+              <div class={styles.digitContent}>
+                {value()[idx]}
+              </div>
+            </Show>
             {isInserting() && value().length === idx && <div class={styles.caret} />}
           </div>
         )}
