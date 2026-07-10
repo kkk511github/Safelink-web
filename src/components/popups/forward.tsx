@@ -7,6 +7,7 @@ import showPickUserPopup from '@components/popups/pickUser';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {copyTextToClipboard} from '@helpers/clipboard';
+import {buildPublicLink, getPublicLinkPrefix} from '@helpers/publicLink';
 import {i18n, join} from '@lib/langPack';
 import {useAppConfig, useIsFrozen} from '@stores/appState';
 import {Message, User} from '@layer';
@@ -171,12 +172,8 @@ export default async function showForwardPopup(
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
     const username = await rootScope.managers.appPeersManager.getPeerUsername(fromPeerId);
     const msgId = getServerMessageId(mid);
-    let url = 'https://t.me/';
-    if(username) {
-      url += username + '/' + msgId;
-    } else {
-      url += 'c/' + fromPeerId.toChatId() + '/' + msgId;
-    }
+    const path = username ? username + '/' + msgId : 'c/' + fromPeerId.toChatId() + '/' + msgId;
+    const url = buildPublicLink(path, await getPublicLinkPrefix());
 
     copyTextToClipboard(url);
     toastNew({langPackKey: 'LinkCopied'});

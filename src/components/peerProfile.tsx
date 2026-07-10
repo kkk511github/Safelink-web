@@ -16,6 +16,12 @@ import formatUserPhone from '@components/wrappers/formatUserPhone';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import anchorCopy from '@helpers/dom/anchorCopy';
+import {
+  buildPublicLink,
+  DEFAULT_PUBLIC_LINK_PREFIX,
+  getPublicLinkPrefix,
+  publicLinkDisplayText
+} from '@helpers/publicLink';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {useAppConfig} from '@stores/appState';
@@ -964,6 +970,8 @@ PeerProfile.Bio = () => {
 PeerProfile.Link = () => {
   const context = useContext(PeerProfileContext);
   const {i18n, I18n, toast, showMyQrCodePopup} = useHotReloadGuard();
+  const [publicLinkPrefix] = createResource(getPublicLinkPrefix);
+  const prefix = () => publicLinkPrefix() || DEFAULT_PUBLIC_LINK_PREFIX;
 
   const toFill = createMemo<Partial<{url: string, also: JSX.Element}>>(() => {
     if(context.peerId.isUser()) {
@@ -972,21 +980,16 @@ PeerProfile.Link = () => {
 
     const usernames = getPeerActiveUsernames(context.peer as Chat.channel);
     if(context.isTopic) {
-      let url = 't.me/';
       const threadId = getServerMessageId(context.threadId);
       const username = usernames[0];
-      if(username) {
-        url += `${username}/${threadId}`;
-      } else {
-        url += `c/${context.peerId.toChatId()}/${threadId}`;
-      }
+      const path = username ? `${username}/${threadId}` : `c/${context.peerId.toChatId()}/${threadId}`;
 
-      return {url};
+      return {url: buildPublicLink(path, prefix())};
     }
 
     if(usernames.length) {
       return {
-        url: 't.me/' + usernames[0],
+        url: buildPublicLink(usernames[0], prefix()),
         also: getUsernamesAlso(usernames)
       };
     }
@@ -994,13 +997,13 @@ PeerProfile.Link = () => {
     const exportedInvite = (context.fullPeer as ChatFull.channelFull)?.exported_invite;
     if(exportedInvite?._ === 'chatInviteExported') {
       return {
-        url: exportedInvite.link.slice(exportedInvite.link.indexOf('t.me/'))
+        url: exportedInvite.link
       };
     }
   });
 
   const onClick = () => {
-    const url = 'https://' + toFill().url;
+    const url = toFill().url;
     copyTextToClipboard(url);
     // Promise.resolve(appProfileManager.getChatFull(this.peerId.toChatId())).then((chatFull) => {
     // copyTextToClipboard(chatFull.exported_invite.link);
@@ -1022,7 +1025,7 @@ PeerProfile.Link = () => {
         }}
       >
         <Row.Icon icon="link" />
-        <Row.Title>{toFill().url}</Row.Title>
+        <Row.Title>{publicLinkDisplayText(toFill().url)}</Row.Title>
         <Row.Subtitle>{toFill().also || i18n('SetUrlPlaceholder')}</Row.Subtitle>
         <PeerProfile.QrButton />
       </Row>

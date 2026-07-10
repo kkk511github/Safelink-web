@@ -3,8 +3,12 @@ import {LangPackKey} from '@lib/langPack';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {
+  buildPublicLink,
+  DEFAULT_PUBLIC_LINK_PREFIX,
+  getPublicLinkPrefix
+} from '@helpers/publicLink';
 
-const T_ME = 'https://t.me/';
 export default function anchorCopy(options: Partial<{
   // href: string,
   mePath: string,
@@ -13,21 +17,23 @@ export default function anchorCopy(options: Partial<{
   const anchor = document.createElement('a');
   anchor.classList.add('anchor-copy');
 
-  let copyWhat: string, copyText: LangPackKey = 'LinkCopied';
-  if(options.mePath) {
-    const href = T_ME + options.mePath;
-    copyWhat = anchor.href = anchor.innerText = href;
-  }
+  let copyWhat: string;
+  const copyText: LangPackKey = options.username ? 'UsernameCopied' : 'LinkCopied';
+  const path = options.mePath || options.username;
+  const applyPrefix = (prefix: string) => {
+    if(!path) return;
 
-  if(options.username) {
-    const href = T_ME + options.username;
-    anchor.href = href;
-    copyWhat = anchor.innerText = '@' + options.username;
-    copyText = 'UsernameCopied';
-  }
+    const href = buildPublicLink(path, prefix);
+    copyWhat = anchor.href = href;
+    anchor.innerText = options.username ? '@' + options.username : href;
+  };
 
-  attachClickEvent(anchor, (e) => {
+  applyPrefix(DEFAULT_PUBLIC_LINK_PREFIX);
+  getPublicLinkPrefix().then(applyPrefix);
+
+  attachClickEvent(anchor, async(e) => {
     cancelEvent(e);
+    if(path) copyWhat = buildPublicLink(path, await getPublicLinkPrefix());
     copyTextToClipboard(copyWhat ?? anchor.href);
     toastNew({langPackKey: copyText});
   });

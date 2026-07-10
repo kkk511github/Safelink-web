@@ -6,6 +6,7 @@ import PopupDeleteMessages from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
 import PopupPinMessage from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
+import {buildPublicLink, getPublicLinkPrefix} from '@helpers/publicLink';
 import PopupSendNow from '@components/popups/sendNow';
 import {toastNew} from '@components/toast';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
@@ -1618,19 +1619,20 @@ export default class ChatContextMenu {
     const isDiscussionFromChannel = !!(threadMessage?.fwd_from?.channel_post && threadMessage.fwd_from.saved_from_msg_id);
     const username = await this.managers.appPeersManager.getPeerUsername(isDiscussionFromChannel ? threadMessage.fromId : peerId);
     const msgId = getServerMessageId(mid);
-    let url = 'https://t.me/';
+    let path: string;
     if(username) {
-      url += username;
-      if(isDiscussionFromChannel) url += `/${getServerMessageId(threadMessage.fwd_from.channel_post)}?comment=${msgId}`;
-      else if(threadId) url += `/${getServerMessageId(threadId)}/${msgId}`;
-      else url += '/' + msgId;
+      path = username;
+      if(isDiscussionFromChannel) path += `/${getServerMessageId(threadMessage.fwd_from.channel_post)}?comment=${msgId}`;
+      else if(threadId) path += `/${getServerMessageId(threadId)}/${msgId}`;
+      else path += '/' + msgId;
     } else {
-      url += 'c/' + peerId.toChatId();
-      if(threadMessage) url += `/${msgId}?thread=${getServerMessageId(threadMessage.mid)}`;
-      else if(threadId) url += `/${getServerMessageId(threadId)}/${msgId}`;
-      else url += '/' + msgId;
+      path = 'c/' + peerId.toChatId();
+      if(threadMessage) path += `/${msgId}?thread=${getServerMessageId(threadMessage.mid)}`;
+      else if(threadId) path += `/${getServerMessageId(threadId)}/${msgId}`;
+      else path += '/' + msgId;
     }
 
+    const url = buildPublicLink(path, await getPublicLinkPrefix());
     return {url, isPrivate: !username};
   }
 
