@@ -52,6 +52,10 @@ export async function selectTarget({
   selectTab,
   onChange
 }: SelectTargetArgs) {
+  if(!target) {
+    return false;
+  }
+
   if(onClick) {
     const tabContent = content?.children[id] as HTMLDivElement;
     const result1 = onClick(id, tabContent, animate);
@@ -94,7 +98,8 @@ export async function selectTarget({
 
   const mutateCallback = animate ? fastRaf : (cb: () => void) => cb();
 
-  const prev = tabs.querySelector(tabs.firstElementChild.tagName.toLowerCase() + '.active') as HTMLElement;
+  const firstTab = tabs.firstElementChild as HTMLElement;
+  const prev = firstTab && tabs.querySelector(firstTab.tagName.toLowerCase() + '.active') as HTMLElement;
   if(prev) {
     mutateCallback(() => {
       prev.classList.remove('active');
@@ -187,6 +192,10 @@ export function horizontalMenu(
       } else {
         id = +args[0];
         el = (tabs.querySelector(`[data-tab="${id}"]`) || tabs.children[id]) as HTMLElement;
+      }
+
+      if(!el) {
+        return false;
       }
 
       _selectTarget(el, id, animate);

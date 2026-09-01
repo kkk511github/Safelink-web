@@ -28,6 +28,8 @@ if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'signIn'}>;
 
+const DEFAULT_LOGIN_COUNTRY = 'CN';
+
 /**
  * Card variant of `pageSignIn`. Country picker + tel input → `auth.sendCode` →
  * branches to authCode (default), pageIm (rare authorization-on-send case),
@@ -89,7 +91,9 @@ export default function SignInCard(_props: {spec: Spec}) {
         overriding = false;
       }
 
-      setHasValidInput(!!(country || (telInputField.value.length - 1) > 1));
+      const phoneDigits = telInputField.value.replace(/\D/g, '');
+      const callingCode = code?.country_code || '';
+      setHasValidInput(callingCode ? phoneDigits.length > callingCode.length : phoneDigits.length > 1);
     }
   });
 
@@ -169,6 +173,12 @@ export default function SignInCard(_props: {spec: Spec}) {
         });
       }
 
+      // SafeLink exposes one MTProto DC through a fixed WebSocket endpoint.
+      // Probing Telegram's remaining DC IDs only blocks login behind timeouts.
+      if(import.meta.env.VITE_MTPROTO_WS_URL) {
+        return nearestDcResult;
+      }
+
       const dcs = new Set([1, 2, 3, 4, 5]);
       const done: number[] = [nearestDcResult.this_dc];
 
@@ -209,7 +219,7 @@ export default function SignInCard(_props: {spec: Spec}) {
     }).then((nearestDcResult) => {
       if(cancelled) return;
       if(!countryInputField.value.length && !telInputField.value.length) {
-        countryInputField.selectCountryByIso2(nearestDcResult.country);
+        countryInputField.selectCountryByIso2(nearestDcResult.country || DEFAULT_LOGIN_COUNTRY);
       }
     });
   }
@@ -219,6 +229,13 @@ export default function SignInCard(_props: {spec: Spec}) {
   let cancelFocus: (() => void) | undefined;
   onMount(() => {
     managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
+
+    // The production audience is primarily in mainland China. Selecting the
+    // calling code synchronously also prevents an 11-digit local number from
+    // being interpreted as a North American +1 number while nearest-DC loads.
+    if(!countryInputField.value.length && !telInputField.value.length) {
+      countryInputField.selectCountryByIso2(DEFAULT_LOGIN_COUNTRY);
+    }
 
     if(!IS_TOUCH_SUPPORTED) {
       cancelFocus = focusWhenConnected(telEl, () => !cancelled);
