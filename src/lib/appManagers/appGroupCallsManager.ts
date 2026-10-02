@@ -502,8 +502,9 @@ export class AppGroupCallsManager extends AppManager {
     if(groupCallUpdate && groupCallUpdate.call._ !== 'groupCallDiscarded') {
       // Keep the id in its native (fetchLong) form — number for small ids,
       // string for large — so it stays === the manager's cache key.
-      const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: GroupCallId};
+      const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: GroupCallId; resolvedAccessHash?: string};
       extended.resolvedCallId = groupCallUpdate.call.id;
+      extended.resolvedAccessHash = String(groupCallUpdate.call.access_hash);
     }
 
     // Re-join hygiene — covers reloads, not just clean leaves. hangUp() resets

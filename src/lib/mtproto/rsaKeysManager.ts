@@ -8,6 +8,7 @@
 import {TLSerialization} from '@lib/mtproto/tl_utils';
 import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 import Modes from '@config/modes';
+import {SAFELINK_RSA_KEY} from '@config/safelink';
 import bytesFromHex from '@helpers/bytes/bytesFromHex';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import bigInt from 'big-integer';
@@ -86,7 +87,9 @@ export class RSAKeysManager {
   private preparePromise: Promise<void> = null;
 
   constructor() {
-    if(Modes.test) {
+    if(import.meta.env.VITE_MTPROTO_WS_URL) {
+      this.publisKeysHex = [SAFELINK_RSA_KEY];
+    } else if(Modes.test) {
       this.publisKeysHex = this.testPublicKeysHex;
     }
   }

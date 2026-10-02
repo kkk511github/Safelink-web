@@ -61,7 +61,7 @@ export default function wrapUrl(url: string, safe?: boolean) {
     }
   } else if((telescoPeMatch = url.match(/^(?:https?:\/\/)?telesco\.pe\/([^/?]+)\/(\d+)/))) {
     onclick = 'im';
-  } else if((tgMatch = url.match(/tg:(?:\/\/)?(.+?)(?:\?|$)/))) {
+  } else if((tgMatch = url.match(/^(?:tg|safelink):(?:\/\/)?(.+?)(?:\?|$)/i))) {
     onclick = 'tg_' + tgMatch[1].split('/')[0] as any;
 
     switch(tgMatch[1]) {

@@ -16,6 +16,7 @@ import {IS_WEB_WORKER} from '@helpers/context';
 import {DcId} from '@types';
 import {getEnvironment} from '@environment/utils';
 import SocketProxied from '@lib/mtproto/transports/socketProxied';
+import selfHostedWebSocketUrl from './selfHostedWebSocketUrl';
 
 export type TransportType = 'websocket' | 'https' | 'http';
 export type ConnectionType = 'client' | 'download' | 'upload';
@@ -42,7 +43,7 @@ export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: Connec
   }
 
   if(import.meta.env.VITE_MTPROTO_WS_URL) {
-    return import.meta.env.VITE_MTPROTO_WS_URL;
+    return selfHostedWebSocketUrl(import.meta.env.VITE_MTPROTO_WS_URL, globalThis.location.origin);
   }
 
   const suffix = getTelegramConnectionSuffix(connectionType);

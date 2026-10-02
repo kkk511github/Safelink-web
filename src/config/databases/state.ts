@@ -1,12 +1,13 @@
 import type {Database} from '.';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {SAFELINK_STORAGE_PREFIX} from '@config/safelink';
 
 export type AccountDatabase = Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs' | 'webapp'>;
 export type CommonDatabase = Database<'session' | 'localStorage'>;
 
 export const getOldDatabaseState = (): AccountDatabase => ({
-  name: `tweb`,
+  name: `${SAFELINK_STORAGE_PREFIX}tweb`,
   version: 7,
   stores: [
     {
@@ -31,7 +32,7 @@ export const getOldDatabaseState = (): AccountDatabase => ({
 });
 
 export const getCommonDatabaseState = (): CommonDatabase => ({
-  name: `tweb-common`,
+  name: `${SAFELINK_STORAGE_PREFIX}tweb-common`,
   version: 8,
   stores: [
     {
@@ -47,7 +48,7 @@ export const getCommonDatabaseState = (): CommonDatabase => ({
 export const getDatabaseState = (
   accountNumber: ActiveAccountNumber
 ): Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs' | 'webapp'> => ({
-  name: `tweb-account-${accountNumber}`,
+  name: `${SAFELINK_STORAGE_PREFIX}tweb-account-${accountNumber}`,
   version: 9,
   stores: [
     {

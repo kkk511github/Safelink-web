@@ -1,7 +1,8 @@
 import {Database} from '.';
+import {SAFELINK_STORAGE_PREFIX} from '@config/safelink';
 
 const DATABASE_SESSION: Database<'session'> = {
-  name: 'telegram',
+  name: SAFELINK_STORAGE_PREFIX + 'telegram',
   version: 1,
   stores: [{
     name: 'session'

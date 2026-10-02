@@ -1,4 +1,5 @@
 import Modes from '@config/modes';
+import {SAFELINK_STORAGE_PREFIX} from '@config/safelink';
 import blobConstruct from '@helpers/blob/blobConstruct';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import makeError from '@helpers/makeError';
@@ -145,7 +146,7 @@ export default class CacheStorageController implements FileStorage {
   }
 
   private openDatabase(): Promise<Cache> {
-    return this.openDbPromise ?? (this.openDbPromise = caches.open(this.dbName));
+    return this.openDbPromise ?? (this.openDbPromise = caches.open(SAFELINK_STORAGE_PREFIX + this.dbName));
   }
 
   public delete(entryName: string) {
@@ -157,7 +158,7 @@ export default class CacheStorageController implements FileStorage {
    */
   public deleteAll() {
     this.openDbPromise = undefined;
-    return caches.delete(this.dbName);
+    return caches.delete(SAFELINK_STORAGE_PREFIX + this.dbName);
   }
 
   public reset() {

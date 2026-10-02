@@ -7,6 +7,7 @@
 
 import {CommonDatabase, getCommonDatabaseState} from '@config/databases/state';
 import Modes from '@config/modes';
+import {SAFELINK_STORAGE_PREFIX} from '@config/safelink';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {IS_WORKER} from '@helpers/context';
 import makeError from '@helpers/makeError';
@@ -18,13 +19,13 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 
 
 class LocalStorage<Storage extends Record<string, any>> {
-  private prefix = '';
+  private prefix = SAFELINK_STORAGE_PREFIX;
   private cache: Partial<Storage> = {};
   private useStorage = true;
 
   constructor() {
     if(Modes.test) {
-      this.prefix = 't_';
+      this.prefix += 't_';
     }
   }
 
@@ -113,7 +114,14 @@ class LocalStorage<Storage extends Record<string, any>> {
         });
       }
 
-      localStorage.clear();
+      if(this.prefix) {
+        for(let i = localStorage.length - 1; i >= 0; --i) {
+          const key = localStorage.key(i);
+          if(key?.startsWith(this.prefix)) localStorage.removeItem(key);
+        }
+      } else {
+        localStorage.clear();
+      }
 
       if(preserveKeys?.length) {
         this.set(obj);
