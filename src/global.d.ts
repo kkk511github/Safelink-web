@@ -163,7 +163,7 @@ declare global {
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
   type LocalErrorType = LocalFileError | NetworkerError | FiltersError | LottieError |
     'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE' | 'PORT_DISCONNECTED' | 'NO_AUTO_DOWNLOAD' | 'CHAT_PRIVATE' | 'NO_WASM' |
-    'CANCELED' | 'TIMEOUT' | 'TAB_ALREADY_OPEN';
+    'CANCELED' | 'TIMEOUT' | 'TAB_ALREADY_OPEN' | 'AUTH_WEB_TOKEN_UNSUPPORTED';
 
   type ServerErrorType =
     | 'FILE_REFERENCE_EXPIRED'

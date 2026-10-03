@@ -2,6 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {render} from 'solid-js/web';
 
 import type {AuthState} from '@types';
+import {WEB_AUTH_TOKEN_UNSUPPORTED} from '@helpers/safelinkLogin';
 
 const mocks = vi.hoisted(() => ({
   importWebTokenAuthorization: vi.fn(),
@@ -9,9 +10,12 @@ const mocks = vi.hoisted(() => ({
   pushToState: vi.fn(),
   navigate: vi.fn(),
   toIm: vi.fn(),
+  toastNew: vi.fn(),
   back: vi.fn(),
   defaultAuthState: 'authStateSignIn' as 'authStateSignIn' | 'authStateSignQr'
 }));
+
+vi.mock('@components/toast', () => ({toastNew: mocks.toastNew}));
 
 vi.mock('@config/state', () => ({
   STATE_INIT: {
@@ -65,6 +69,7 @@ const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 beforeEach(() => {
   mocks.defaultAuthState = 'authStateSignIn';
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -72,17 +77,20 @@ afterEach(() => {
   dispose = undefined;
   document.body.replaceChildren();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe('sign import card', () => {
   it('drops the web token when it falls back to another auth method', async() => {
-    mocks.importWebTokenAuthorization.mockRejectedValue({type: 'AUTH_TOKEN_INVALID'});
+    mocks.importWebTokenAuthorization.mockRejectedValue({type: 'AUTH_TOKEN_INVALID', message: TOKEN});
 
     mount();
     await flush();
 
     expect(mocks.cancelWebTokenAuthorization).toHaveBeenCalledWith(TOKEN, DC_ID);
     expect(mocks.navigate).toHaveBeenCalledWith({name: 'signIn'});
+    expect(console.error).toHaveBeenCalledWith('Web token authorization failed');
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(TOKEN);
   });
 
   it('keeps the web token while the password step takes over', async() => {
@@ -104,5 +112,22 @@ describe('sign import card', () => {
     expect(mocks.importWebTokenAuthorization).toHaveBeenCalledWith(TOKEN, DC_ID);
     expect(mocks.cancelWebTokenAuthorization).not.toHaveBeenCalled();
     expect(mocks.toIm).toHaveBeenCalled();
+  });
+
+  it('reports unsupported servers and falls back to phone without attempting revoke', async() => {
+    mocks.defaultAuthState = 'authStateSignQr';
+    mocks.importWebTokenAuthorization.mockRejectedValue({type: WEB_AUTH_TOKEN_UNSUPPORTED});
+    location.hash = '#?tgWebAuthToken=' + TOKEN;
+
+    mount();
+    await flush();
+
+    expect(mocks.navigate).toHaveBeenCalledWith({name: 'signIn'});
+    expect(mocks.cancelWebTokenAuthorization).not.toHaveBeenCalled();
+    expect(mocks.pushToState).toHaveBeenLastCalledWith('authState', {_: 'authStateSignIn'});
+    expect(mocks.toastNew).toHaveBeenCalledWith({langPackKey: 'Login.WebToken.Unsupported'});
+    expect(mocks.toIm).not.toHaveBeenCalled();
+    expect(location.hash).toBe('');
+    expect(console.error).not.toHaveBeenCalled();
   });
 });

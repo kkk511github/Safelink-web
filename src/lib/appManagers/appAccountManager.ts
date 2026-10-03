@@ -2,6 +2,8 @@ import App from '@config/app';
 import ctx from '@environment/ctx';
 import longFromBytes from '@helpers/long/longFromBytes';
 import tsNow from '@helpers/tsNow';
+import makeError from '@helpers/makeError';
+import {loginRequestWithDeadline, WEB_AUTH_TOKEN_UNSUPPORTED} from '@helpers/safelinkLogin';
 import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update} from '@layer';
 import {DcId, TrueDcId} from '@types';
 import AccountController from '@lib/accounts/accountController';
@@ -339,19 +341,33 @@ export default class AppAccountManager extends AppManager {
     });
   }
 
+  private async supportsWebTokenAuthorization() {
+    if(!import.meta.env.VITE_MTPROTO_WS_URL) return true;
+    try {
+      const config = await loginRequestWithDeadline(Promise.resolve(this.apiManager.getAppConfig()), 10000);
+      return config?.safelink_web_auth_tokens_enabled === true;
+    } catch{
+      return false;
+    }
+  }
+
   /**
    * A `tgWebAuthToken` handed to us in the URL by a Telegram website. The
    * account it belongs to lives on its own DC, so the base moves there before
    * we ask — the same way a migrated login would.
    */
   public async importWebTokenAuthorization(token: string, dcId: DcId) {
+    if(!await this.supportsWebTokenAuthorization()) throw makeError(WEB_AUTH_TOKEN_UNSUPPORTED);
     this.apiManager.setBaseDcId(dcId);
 
     const authorization = await this.apiManager.invokeApi('auth.importWebTokenAuthorization', {
       api_id: App.id,
       api_hash: App.hash,
       web_auth_token: token
-    }, {dcId, ignoreErrors: true});
+    }, {dcId, ignoreErrors: true}).catch((err: ApiError) => {
+      // Only the password handoff needs a distinct error; never forward bearer-bearing details.
+      throw makeError(err?.type === 'SESSION_PASSWORD_NEEDED' ? 'SESSION_PASSWORD_NEEDED' : 'UNKNOWN');
+    });
 
     if(authorization._ === 'auth.authorization') {
       await this.apiManager.completeAuthorization(authorization);
@@ -363,15 +379,18 @@ export default class AppAccountManager extends AppManager {
   /**
    * A token we are not going to import stays a usable login on the server, and
    * the URL it arrived in outlives the tab (history, a shared link) — so drop
-   * it. Fire-and-forget: nobody waits on the answer, and a token the server
-   * already forgot is not worth reporting either.
+   * it only when supported. A disabled capability is not a successful revoke.
    */
-  public cancelWebTokenAuthorization(token: string, dcId: DcId) {
-    this.apiManager.invokeApi('auth.cancelWebTokenAuthorization', {
-      web_auth_token: token
-    }, {dcId, ignoreErrors: true}).catch((err) => {
-      this.log.error('web token cancellation error:', err);
-    });
+  public async cancelWebTokenAuthorization(token: string, dcId: DcId): Promise<boolean> {
+    if(!await this.supportsWebTokenAuthorization()) return false;
+    try {
+      return await this.apiManager.invokeApi('auth.cancelWebTokenAuthorization', {
+        web_auth_token: token
+      }, {dcId, ignoreErrors: true});
+    } catch{
+      this.log.error('Web token cancellation failed');
+      return false;
+    }
   }
 
   public sendVerifyEmailCode(purpose: EmailVerifyPurpose, email: string) {

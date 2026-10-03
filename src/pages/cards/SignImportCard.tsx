@@ -1,7 +1,9 @@
 import {onMount} from 'solid-js';
 
 import {putPreloader} from '@components/putPreloader';
+import {toastNew} from '@components/toast';
 import {STATE_INIT} from '@config/state';
+import {WEB_AUTH_TOKEN_UNSUPPORTED} from '@helpers/safelinkLogin';
 
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
@@ -16,7 +18,8 @@ type Spec = Extract<CardSpec, {name: 'signImport'}>;
  * `auth.importWebTokenAuthorization`; on success goes to IM, on
  * `SESSION_PASSWORD_NEEDED` jumps to the password card, on any other failure
  * falls back to the configured default auth state (signIn or signQR) and drops
- * the token server-side.
+ * the token server-side only when supported. Unsupported SafeLink instances
+ * return to phone login without attempting either bearer-token RPC.
  */
 export default function SignImportCard(props: {spec: Spec}) {
   const {managers, navigate, toIm} = useAuthFlow();
@@ -45,12 +48,20 @@ export default function SignImportCard(props: {spec: Spec}) {
       }
     } catch(err) {
       switch((err as ApiError).type) {
+        case WEB_AUTH_TOKEN_UNSUPPORTED: {
+          await managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
+          nextNav = () => {
+            navigate({name: 'signIn'});
+            toastNew({langPackKey: 'Login.WebToken.Unsupported'});
+          };
+          break;
+        }
         case 'SESSION_PASSWORD_NEEDED': {
           nextNav = () => navigate({name: 'password'});
           break;
         }
         default: {
-          console.error('authorization import error:', err);
+          console.error('Web token authorization failed');
           managers.appAccountManager.cancelWebTokenAuthorization(token, dcId);
           const defaultState = STATE_INIT.authState._;
           if(defaultState === 'authStateSignIn') nextNav = () => navigate({name: 'signIn'});

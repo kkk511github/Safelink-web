@@ -1,3 +1,5 @@
+export const WEB_AUTH_TOKEN_UNSUPPORTED = 'AUTH_WEB_TOKEN_UNSUPPORTED';
+
 export function prependLoginToken(tokens: string[], token: Uint8Array): string[] {
   if(token?.length !== 32) return tokens;
   const encoded = Array.from(token, (byte) => byte.toString(16).padStart(2, '0')).join('');
