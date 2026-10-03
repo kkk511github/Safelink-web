@@ -8,12 +8,12 @@ import MediaHeader from '@components/mediaHeader';
 import TelInputField from '@components/telInputField';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import focusWhenConnected from '@helpers/dom/focusWhenConnected';
+import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import replaceContent from '@helpers/dom/replaceContent';
 import {HelpCountry, HelpCountryCode} from '@layer';
 import I18n, {i18n} from '@lib/langPack';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import AccountController from '@lib/accounts/accountController';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import commonStateStorage from '@lib/commonStateStorage';
@@ -21,6 +21,7 @@ import {TrueDcId} from '@types';
 
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
+import {continueLogin} from '@/pages/continueLogin';
 import styles from '@/pages/authFlow.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -97,6 +98,8 @@ export default function SignInCard(_props: {spec: Spec}) {
   });
 
   const telEl = telInputField.input;
+  telEl.setAttribute('role', 'textbox');
+  telEl.setAttribute('aria-multiline', 'false');
   telEl.addEventListener('keypress', (e) => {
     if(hasValidInput() && !submitting() && e.key === 'Enter') {
       return onSubmit();
@@ -119,20 +122,8 @@ export default function SignInCard(_props: {spec: Spec}) {
     );
 
     const phone_number = telInputField.value;
-    managers.apiManager.sendLoginCode(phone_number).then(async(code) => {
-      if(code._ === 'auth.sentCodeSuccess') {
-        const {authorization} = code;
-        if(authorization._ === 'auth.authorization') {
-          await managers.apiManager.completeAuthorization(authorization);
-          toIm();
-          return;
-        }
-      }
-
-      navigate({
-        name: 'authCode',
-        payload: Object.assign(code as any, {phone_number}) // sentCode + phone_number
-      });
+    managers.apiManager.sendLoginCode(phone_number).then((code) => {
+      return continueLogin(code, {managers, navigate, toIm, phone_number});
     }).catch((err) => {
       setSubmitting(false);
 
@@ -232,7 +223,7 @@ export default function SignInCard(_props: {spec: Spec}) {
     }
 
     if(!IS_TOUCH_SUPPORTED) {
-      cancelFocus = focusWhenConnected(telEl, () => !cancelled);
+      cancelFocus = focusWhenSettled(telEl, () => !cancelled);
     }
 
     tryAgain();
@@ -247,7 +238,6 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   return (
     <AuthCard
-      class={styles.pageSignIn}
       header={
         <MediaHeader>
           <MediaHeader.Sticker
@@ -259,7 +249,7 @@ export default function SignInCard(_props: {spec: Spec}) {
               </svg>
             }
           />
-          <MediaHeader.Title>{i18n('Login.Title')}</MediaHeader.Title>
+          <MediaHeader.Title tag="h1">{i18n('Login.Title')}</MediaHeader.Title>
           <MediaHeader.Subtitle class="secondary">{i18n('Login.StartText')}</MediaHeader.Subtitle>
         </MediaHeader>
       }

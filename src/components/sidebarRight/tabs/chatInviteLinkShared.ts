@@ -2,12 +2,13 @@ import tsNow from '@helpers/tsNow';
 import {ChatInviteImporter, ExportedChatInvite} from '@layer';
 import {AppManagers} from '@lib/managers';
 import {i18n, LangPackKey} from '@lib/langPack';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import hasRights from '@lib/appManagers/utils/chats/hasRights';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import AppSelectPeers from '@components/appSelectPeers';
 import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
+import {buildPublicLink, getPublicLinkPrefix} from '@helpers/publicLink';
 
 export type ChatInvite = ExportedChatInvite.chatInviteExported;
 
@@ -35,6 +36,7 @@ export function isActiveInvite(invite: ChatInvite) {
 
 export class ChatInviteLink extends InviteLink {
   public subtitle: HTMLElement;
+  private inviteRevision = 0;
 
   constructor(public options: ConstructorParameters<typeof InviteLink>[0] & {
     actions: ChatInviteActions,
@@ -52,9 +54,15 @@ export class ChatInviteLink extends InviteLink {
   }
 
   public setChatInvite(chatInvite: ChatInvite | string) {
+    const revision = ++this.inviteRevision;
     const isUsername = typeof(chatInvite) === 'string';
     const username = typeof(chatInvite) === 'string' ? chatInvite : undefined;
-    this.setUrl(isUsername ? 't.me/' + username : chatInvite.link);
+    this.setUrl(isUsername ? buildPublicLink(username) : chatInvite.link);
+    if(isUsername) {
+      getPublicLinkPrefix().then((prefix) => {
+        if(revision === this.inviteRevision) this.setUrl(buildPublicLink(username, prefix));
+      });
+    }
 
     if(this.subtitle) {
       if(!isUsername && chatInvite?.usage) {

@@ -16,6 +16,8 @@ import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {createRoot, For, onCleanup} from 'solid-js';
 import {render} from 'solid-js/web';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
+import {ChatType} from '@components/chat/chatType';
+import isForceReplyMarkup from '@appManagers/utils/messages/isForceReplyMarkup';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -28,6 +30,7 @@ export default class ReplyKeyboard extends DropdownHover {
   private chatInput: ChatInput;
   private scrollable: Scrollable;
   private middlewareHelper: MiddlewareHelper;
+  private ephemeralMode = false;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
@@ -91,7 +94,11 @@ export default class ReplyKeyboard extends DropdownHover {
 
   public async checkForceReply() {
     const replyMarkup = await this.getReplyMarkup();
-    if(replyMarkup._ === 'replyKeyboardForceReply' &&
+    if(this.ephemeralMode) {
+      return;
+    }
+
+    if(isForceReplyMarkup(replyMarkup) &&
       !replyMarkup.pFlags.hidden &&
       !replyMarkup.pFlags.used) {
       replyMarkup.pFlags.used = true;
@@ -100,7 +107,11 @@ export default class ReplyKeyboard extends DropdownHover {
   }
 
   private async getReplyMarkup(): Promise<ReplyMarkup> {
-    return this.chatInput.chat.historyStorageNoThreadId.replyMarkup ?? {
+    // the welcome messages section shares the chat's history storage, yet a bot's keyboard or
+    // force-reply there is not for writing templates (desktop and Android have none in it)
+    const replyMarkup = this.chatInput.chat.type !== ChatType.Welcome &&
+      this.chatInput.chat.historyStorageNoThreadId.replyMarkup;
+    return replyMarkup || {
       _: 'replyKeyboardHide',
       pFlags: {}
     };
@@ -148,7 +159,12 @@ export default class ReplyKeyboard extends DropdownHover {
       replyMarkup = await this.getReplyMarkup();
     }
 
-    const hide = replyMarkup._ === 'replyKeyboardHide' || !(replyMarkup as ReplyMarkup.replyInlineMarkup).rows?.length;
+    const hide = this.ephemeralMode ||
+      replyMarkup._ === 'replyKeyboardHide' ||
+      // a force-reply inline markup is tracked as the last keyboard, but it is drawn in
+      // its own bubble — there is no panel to open for it
+      replyMarkup._ === 'replyInlineMarkup' ||
+      !(replyMarkup as ReplyMarkup.replyKeyboardMarkup).rows?.length;
     this.btnHover.classList.toggle('hide', hide);
 
     if(hide) {
@@ -156,6 +172,11 @@ export default class ReplyKeyboard extends DropdownHover {
     }
 
     return !hide;
+  }
+
+  public setEphemeralMode(ephemeralMode: boolean) {
+    this.ephemeralMode = ephemeralMode;
+    this.checkAvailability();
   }
 
   public setPeer(peerId: PeerId) {

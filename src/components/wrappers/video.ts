@@ -32,10 +32,10 @@ import rootScope from '@lib/rootScope';
 import {ThumbCache} from '@lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appMediaPlaybackController, {AppMediaPlaybackController, MediaSearchContext} from '@components/appMediaPlaybackController';
-import AudioElement, {findMediaTargets} from '@components/audio';
+import {DeferredMediaElement, findMediaTargets} from '@components/audio';
 import Button from '@components/button';
 import Icon from '@components/icon';
-import {createProgressRing, getProgressRingRadius} from '@components/progressRing';
+import {createProgressRing, getProgressRingCircumference} from '@components/progressRing';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ProgressivePreloader from '@components/preloader';
 import wrapPhoto from '@components/wrappers/photo';
@@ -43,33 +43,16 @@ import SuperIntersectionObserver, {IntersectionCallback} from '@helpers/dom/supe
 import VideoPlayer from '@lib/mediaPlayer';
 import debounce from '@helpers/schedulers/debounce';
 import {isFullScreen} from '@helpers/dom/fullScreen';
-import ButtonIcon from '@components/buttonIcon';
 import overlayCounter from '@helpers/overlayCounter';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 export const USE_VIDEO_OBSERVER = false;
 
-let roundVideoCircumference = 0;
+const roundVideoProgressRingResizers = new Set<() => void>();
 mediaSizes.addEventListener('changeScreen', (from, to) => {
   if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
-    const elements = Array.from(document.querySelectorAll('.media-round .progress-ring')) as SVGSVGElement[];
-    const width = mediaSizes.active.round.width;
-    const halfSize = width / 2;
-    const radius = getProgressRingRadius(width);
-    roundVideoCircumference = 2 * Math.PI * radius;
-    elements.forEach((element) => {
-      element.setAttributeNS(null, 'width', '' + width);
-      element.setAttributeNS(null, 'height', '' + width);
-
-      const circle = element.firstElementChild as SVGCircleElement;
-      circle.setAttributeNS(null, 'cx', '' + halfSize);
-      circle.setAttributeNS(null, 'cy', '' + halfSize);
-      circle.setAttributeNS(null, 'r', '' + radius);
-
-      circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
-      circle.style.strokeDashoffset = '' + roundVideoCircumference;
-    });
+    roundVideoProgressRingResizers.forEach((resize) => resize());
   }
 });
 
@@ -77,13 +60,14 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, fillBox, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
   message?: Message.message,
   boxWidth?: number,
   boxHeight?: number,
+  fillBox?: boolean,
   withTail?: boolean,
   isOut?: boolean,
   middleware: Middleware,
@@ -126,6 +110,9 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   let noAutoDownload = autoDownloadSize === 0;
   const isGroupedItem = !(boxWidth && boxHeight);
   uploadingFileName ??= message?.uploadingFileName?.[0];
+  // * a round video keeps looping its muted preview while it uploads, like the official clients do;
+  // * a regular video would just play under the progress spinner, so it waits for the upload instead
+  const suppressAutoplayWhileUploading = !!uploadingFileName && doc.type !== 'round';
   canAutoplay ??= /* doc.sticker ||  */(
     (
       doc.type !== 'video' || (
@@ -136,7 +123,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   );
   let spanTime: HTMLElement, spanPlay: HTMLElement;
 
-  let willObserveSound = false, noSoundIcon: HTMLElement, myMiddlewareHelper: MiddlewareHelper, originalMiddleware: Middleware;
+  let willObserveSound = false, myMiddlewareHelper: MiddlewareHelper, originalMiddleware: Middleware;
   if(!noInfo && container) {
     spanTime = document.createElement('span');
     spanTime.classList.add('video-time');
@@ -156,7 +143,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
             middleware = myMiddlewareHelper.get();
           }
 
-          spanTime.append(noSoundIcon = Icon('nosound', 'video-time-icon'));
+          spanTime.append(Icon('nosound_filled', 'video-time-icon'));
         } else {
           needPlayButton = true;
         }
@@ -171,7 +158,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     }
 
     if(needPlayButton) {
-      spanPlay = Button('btn-circle video-play position-center', {icon: 'largeplay', noRipple: true});
+      spanPlay = Button('btn-circle video-play position-center', {icon: 'largeplay_filled', noRipple: true});
       container.append(spanPlay);
     }
   }
@@ -189,6 +176,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       container,
       boxWidth,
       boxHeight,
+      fillBox,
       withTail,
       isOut,
       lazyLoadQueue,
@@ -224,23 +212,33 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     divRound.dataset.peerId = '' + message.peerId;
     (divRound as any).message = message;
 
-    const size = mediaSizes.active.round;
     const strokeWidth = 3.5;
-    const radius = getProgressRingRadius(size.width, strokeWidth);
-    if(!roundVideoCircumference) {
-      roundVideoCircumference = 2 * Math.PI * radius;
-    }
+    const roundVideoSize = doc.w || mediaSizes.active.round.width;
+    const getProgressRingSize = () => Math.min(roundVideoSize, mediaSizes.active.round.width);
 
     // Shared round progress-ring component (also used by the video-note
-    // recorder). We drive it imperatively below (and the global changeScreen
-    // resize handler mutates it too), so progress stays a plain DOM write.
-    const ring = createProgressRing({size: size.width, strokeWidth, strokeOpacity: 0.3});
-    middleware.onClean(() => ring.destroy());
+    // recorder). Older round videos can be smaller than the current UI default,
+    // so keep this ring bound to the video's own rendered diameter.
+    const progressRingSize = getProgressRingSize();
+    const ring = createProgressRing({size: progressRingSize, strokeWidth, strokeOpacity: 0.3});
+    let progress = 0;
+    let circumference = getProgressRingCircumference(progressRingSize, strokeWidth);
+    const setProgress = (value: number) => {
+      progress = Math.max(0, Math.min(1, value || 0));
+      ring.circle.style.strokeDashoffset = '' + circumference * (1 - progress);
+    };
+    const resizeProgressRing = () => {
+      const size = getProgressRingSize();
+      ring.setSize(size);
+      circumference = getProgressRingCircumference(size, strokeWidth);
+      setProgress(progress);
+    };
+    roundVideoProgressRingResizers.add(resizeProgressRing);
+    middleware.onClean(() => {
+      roundVideoProgressRingResizers.delete(resizeProgressRing);
+      ring.destroy();
+    });
     divRound.append(ring.element);
-
-    const circle = ring.circle;
-    circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
-    circle.style.strokeDashoffset = '' + roundVideoCircumference;
 
     const isUnread = message.pFlags.media_unread;
     if(isUnread) {
@@ -262,7 +260,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     const onLoad = () => {
       const message: Message.message = (divRound as any).message;
-      const globalVideo = appMediaPlaybackController.addMedia({message, autoload: !noAutoDownload}) as HTMLVideoElement;
+      const globalVideo = appMediaPlaybackController.addMedia({
+        message,
+        autoload: !noAutoDownload,
+        middleware
+      }) as HTMLVideoElement;
       onGlobalMedia?.(globalVideo);
       const clear = () => {
         (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
@@ -280,8 +282,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       const onFrame = () => {
         ctx.drawImage(globalVideo, 0, 0);
 
-        const offset = roundVideoCircumference - globalVideo.currentTime / globalVideo.duration * roundVideoCircumference;
-        circle.style.strokeDashoffset = '' + offset;
+        setProgress(globalVideo.currentTime / globalVideo.duration);
 
         return !globalVideo.paused;
       };
@@ -307,7 +308,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         fastRaf(onTimeUpdate);
       }, 1000, false);
 
-      const noSoundIcon = Icon('nosound', 'video-time-icon');
+      const noSoundIcon = Icon('nosound_filled', 'video-time-icon');
       const setIsPaused = (paused: boolean) => {
         divRound.classList.toggle('is-paused', paused);
         if(paused) {
@@ -398,12 +399,12 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     if(message.pFlags.is_outgoing) {
       // ! WARNING ! just to type-check
-      (divRound as any as AudioElement).onLoad = onLoad;
+      (divRound as any as DeferredMediaElement).onLoad = onLoad;
       divRound.dataset.isOutgoing = '1';
     } else {
       onLoad();
     }
-  } else if(!noAutoplayAttribute && !uploadingFileName) {
+  } else if(!noAutoplayAttribute && !suppressAutoplayWhileUploading) {
     video.autoplay = true; // для safari
   }
 
@@ -415,6 +416,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       container,
       boxWidth,
       boxHeight,
+      fillBox,
       withTail,
       isOut,
       lazyLoadQueue,
@@ -511,10 +513,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     // * autoplay is suppressed while the upload is in progress, and the bubble
     // * isn't re-rendered on send — resume playback once the upload completes
-    if(!noAutoplayAttribute && doc.type !== 'round') {
+    if(!noAutoplayAttribute && suppressAutoplayWhileUploading) {
       appDownloadManager.getUpload(uploadingFileName).then(() => {
         if(middleware && !middleware()) return;
-        video.play().catch(noop);
+        video.autoplay = true; // * so the intersector resumes it after it scrolls back into view
+        safePlay(video);
       }, noop);
     }
   } else if(!cacheContext.downloaded && !supportsStreaming && !withoutPreloader) {
@@ -574,7 +577,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   video.muted = true;
   video.loop = true;
   // video.play();
-  if(!noAutoplayAttribute && !uploadingFileName) {
+  if(!noAutoplayAttribute && !suppressAutoplayWhileUploading) {
     video.autoplay = true;
   }
 
@@ -635,7 +638,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         if(spanTime) {
           spanTime.classList.add('is-error');
           const previousIcon = spanTime.querySelector('.video-time-icon');
-          const newIcon = Icon('sendingerror', 'video-time-icon');
+          const newIcon = Icon('sendingerror_filled', 'video-time-icon');
           if(previousIcon) previousIcon.replaceWith(newIcon);
           else spanTime.append(newIcon);
         }
@@ -728,78 +731,9 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   const attachSoundObserver = willObserveSound ? () => {
     video.mini = true;
     video.pause();
-    // const button = ButtonIcon('zoomin video-to-viewer', {noRipple: true});
-    // container.append(button);
-
-    // const updateIcon = (muted: boolean) => {
-    //   replaceButtonIcon(button, muted ? 'speakeroff' : 'speaker');
-    // };
-
-    // updateIcon(video.muted);
-
-    const onMuted = () => {
-      return;
-
-      releaseSingleMedia?.(true);
-      releaseSingleMedia = undefined;
-      // video.muted = true;
-    };
-
-    const onUnmute = () => {
-      return;
-
-      // if(onAnotherSingleMedia !== _onAnotherSingleMedia) {
-      //   onAnotherSingleMedia?.();
-      // }
-
-      releaseSingleMedia = appMediaPlaybackController.setSingleMedia({
-        media: video,
-        message,
-        standalone: true
-      });
-      // onAnotherSingleMedia = _onAnotherSingleMedia = () => {
-      //   mute();
-      // };
-    };
-
-    const mute = () => {
-      if(!releaseSingleMedia) {
-        return;
-      }
-
-      noSoundIcon.classList.remove('hide');
-      onMuted();
-    };
-
-    const unmute = () => {
-      if(releaseSingleMedia) {
-        return;
-      }
-
-      noSoundIcon.classList.add('hide');
-      onUnmute();
-    };
-
-    // const toggle = (_unmute?: boolean) => {
-    //   if(_unmute !== undefined) (_unmute ? unmute : mute)();
-    //   else (releaseSingleMedia ? mute : unmute)();
-    //   updateIcon(video.muted);
-    // };
-
-    let releaseSingleMedia: ReturnType<AppMediaPlaybackController['setSingleMedia']>/* , _onAnotherSingleMedia: () => void */;
-    // const detachClickEvent = attachClickEvent(button, (e) => {
-    //   cancelEvent(e);
-    //   toggle();
-    // });
-
     const onIntersection: IntersectionCallback = (entry) => {
       if(!entry.isIntersecting) {
         destroyPlayer();
-      }
-
-      if(!entry.isIntersecting && !video.muted) {
-        // toggle(false);
-        onMuted();
       }
     };
 
@@ -869,7 +803,6 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
           }
 
           // changedVolume = true;
-          // (!video.volume || video.muted ? mute : unmute)();
         },
         onFullScreen: (active) => {
           onLock(active);
@@ -908,16 +841,6 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       video.volume = Math.min(appMediaPlaybackController.volume, 1);
     };
 
-    const onSingleMedia = (media: HTMLMediaElement) => {
-      if(media !== video && !video.muted) {
-        if(videoPlayer) {
-          videoPlayer.volumeSelector.setVolume({muted: true, volume: video.volume});
-        } else {
-          video.muted = true;
-        }
-      }
-    };
-
     const onPlaybackMediaParams = (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
       if(videoPlayer) {
         return;
@@ -929,16 +852,12 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     };
 
     appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);
-    // appMediaPlaybackController.addEventListener('singleMedia', onSingleMedia);
     appMediaPlaybackController.addEventListener('playbackParams', onPlaybackMediaParams);
 
     middleware.onClean(() => {
-      // detachClickEvent();
-      releaseSingleMedia?.();
       observer.unobserve(video, onIntersection);
       delete container.onMiniVideoMouseMove;
       appMediaPlaybackController.removeEventListener('toggleVideoAutoplaySound', onAutoplaySound);
-      // appMediaPlaybackController.removeEventListener('singleMedia', onSingleMedia);
       appMediaPlaybackController.removeEventListener('playbackParams', onPlaybackMediaParams);
     });
 

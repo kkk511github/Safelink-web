@@ -1,6 +1,8 @@
 {
     "name": "SafeLink Web",
     "short_name": "SafeLink",
+    "id": "./",
+    "scope": "./",
     "start_url": "./",
     "description": "SafeLink is a secure cloud messaging app with a focus on privacy and speed.",
     "icons": [
@@ -39,7 +41,7 @@
             }]
         }
     },
-    "theme_color": "#ffffff",
+    "theme_color": "#fffffe",
     "background_color": "#ffffff",
     "display": "standalone",
     "gcm_sender_id": "122867383838"

@@ -1,4 +1,5 @@
 import applyColorOnContext, {paintFrameTinted} from '@helpers/canvas/applyColorOnContext';
+import {canvasBytes, readThreadMemory} from '@lib/debug/memoryStats';
 import listenMessagePort from '@helpers/listenMessagePort';
 import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
 import {CUSTOM_EMOJI_FADE_IN_DURATION, CUSTOM_EMOJI_FRAME_INTERVAL} from '@lib/customEmoji/constants';
@@ -8,16 +9,16 @@ type CompositorRenderer = {canvas: OffscreenCanvas, context: OffscreenCanvasRend
 
 const renderers: Map<number, CompositorRenderer> = new Map();
 const latestFrames: Map<number, ImageBitmap> = new Map(); // playerReqId -> latest frame
-const decodePorts: Map<number, MessagePort> = new Map(); // rlottie workerId -> port
+const decodePorts: Map<number, MessagePort> = new Map(); // lottie workerId -> port
 
-// sticker path: a rlottie item that owns its own OffscreenCanvas(es) 1:1 (the 'canvas' offscreen mode),
-// routed here instead of presenting inside the shared rlottie worker. Keyed by the item reqId, which is
+// sticker path: a lottie item that owns its own OffscreenCanvas(es) 1:1 (the 'canvas' offscreen mode),
+// routed here instead of presenting inside the shared lottie worker. Keyed by the item reqId, which is
 // how its decoded frames arrive over decodePort. Separate from the emoji renderer/group model on purpose.
 type StickerSurface = {canvas: OffscreenCanvas, context: OffscreenCanvasRenderingContext2D};
 type StickerRenderer = {surfaces: StickerSurface[], color: string, latestFrame?: ImageBitmap};
-const stickerRenderers: Map<number, StickerRenderer> = new Map(); // rlottie item reqId -> sticker surface(s)
+const stickerRenderers: Map<number, StickerRenderer> = new Map(); // lottie item reqId -> sticker surface(s)
 
-// mirrors the shared rlottie worker's paintStaged(): draw the frame 1:1, then optional color tint
+// mirrors the shared lottie worker's paintStaged(): draw the frame 1:1, then optional color tint
 const paintSticker = (sticker: StickerRenderer) => {
   const {latestFrame, color} = sticker;
   if(!latestFrame) {
@@ -161,7 +162,7 @@ const scheduleFlush = () => {
     return;
   }
 
-  // single coalescing timer; no rAF anywhere (timer discipline matches the rlottie workers)
+  // single coalescing timer; no rAF anywhere (timer discipline matches the lottie workers)
   flushTimeout = setTimeout(flush, CUSTOM_EMOJI_FRAME_INTERVAL) as any as number;
 };
 
@@ -216,8 +217,26 @@ compositorMessagePort.addMultipleEventsListeners({
   }),
 
   resizeRenderer: ({rendererId, width, height}) => withRenderer(rendererId, (renderer) => {
-    renderer.canvas.width = width; // resizing clears the canvas
-    renderer.canvas.height = height;
+    const {canvas, context} = renderer;
+    const {width: oldWidth, height: oldHeight} = canvas;
+
+    // * resizing clears the canvas, and the flush that draws it again is a frame away - the emoji
+    // * would blink out in between. What is on it is carried over into the new box instead, so the
+    // * flush replaces a picture rather than filling a hole. It is the picture of another size for
+    // * that one frame, which is what a resized <img> does, and nobody sees it as missing.
+    let carried: OffscreenCanvas;
+    if(oldWidth && oldHeight && width && height) {
+      carried = new OffscreenCanvas(oldWidth, oldHeight);
+      carried.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+
+    if(carried) {
+      context.drawImage(carried, 0, 0, width, height);
+    }
+
     renderer.dirty = true;
     scheduleFlush();
   }),
@@ -375,6 +394,37 @@ compositorMessagePort.addMultipleEventsListeners({
     if(sticker) { // re-blit the staged frame - a commit made while the placeholder was detached can be lost
       paintSticker(sticker);
     }
+  },
+
+  memoryStats: () => {
+    let rendererBytes = 0, groups = 0, stickerBytes = 0, surfaces = 0, frameBytes = 0;
+    for(const renderer of renderers.values()) {
+      rendererBytes += canvasBytes(renderer.canvas);
+      groups += renderer.groups.size;
+    }
+
+    for(const sticker of stickerRenderers.values()) {
+      surfaces += sticker.surfaces.length;
+      for(const {canvas} of sticker.surfaces) {
+        stickerBytes += canvasBytes(canvas);
+      }
+    }
+
+    for(const frame of latestFrames.values()) {
+      frameBytes += canvasBytes(frame);
+    }
+
+    return readThreadMemory('compositor', {
+      renderers: renderers.size,
+      rendererCanvasGpuBytes: rendererBytes,
+      groups,
+      stickerRenderers: stickerRenderers.size,
+      stickerSurfaces: surfaces,
+      stickerCanvasGpuBytes: stickerBytes,
+      latestFrames: latestFrames.size,
+      latestFrameGpuBytes: frameBytes,
+      decodePorts: decodePorts.size
+    });
   },
 
   decodePort: ({workerId}, _, event) => {

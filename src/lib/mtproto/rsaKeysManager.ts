@@ -12,6 +12,7 @@ import {SAFELINK_RSA_KEY} from '@config/safelink';
 import bytesFromHex from '@helpers/bytes/bytesFromHex';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import bigInt from 'big-integer';
+import {discoverServerPublicKey} from '@lib/mtproto/safelinkServerDiscovery';
 
 export type RSAPublicKeyHex = {
   modulus: string,
@@ -100,7 +101,17 @@ export class RSAKeysManager {
       return Promise.resolve();
     }
 
-    return this.preparePromise = Promise.all(this.publisKeysHex.map((keyParsed) => {
+    return this.preparePromise = this.prepareKeys().finally(() => {
+      this.preparePromise = null;
+    });
+  }
+
+  private async prepareKeys() {
+    if(import.meta.env.VITE_MTPROTO_WS_URL) {
+      const key = await discoverServerPublicKey(import.meta.env.VITE_MTPROTO_WS_URL, globalThis.location.origin);
+      if(key) this.publisKeysHex = [key];
+    }
+    await Promise.all(this.publisKeysHex.map((keyParsed) => {
       const RSAPublicKey = new TLSerialization();
       RSAPublicKey.storeBytes(bytesFromHex(keyParsed.modulus), 'n');
       RSAPublicKey.storeBytes(bytesFromHex(keyParsed.exponent), 'e');
@@ -121,12 +132,8 @@ export class RSAKeysManager {
           this.publicKeysParsed[fingerprint.toLowerCase()] = publicKey;
         });
       });
-    })).then(() => {
-      this.prepared = true;
-
-      // console.log('[MT] Prepared keys');
-      this.preparePromise = null;
-    });
+    }));
+    this.prepared = true;
   }
 
   public async select(fingerprints: Array<string>) {

@@ -33,10 +33,10 @@ const ChatDiscussion: Component = () => {
   let canChangeInfo: boolean;
 
   let stickerContainer!: HTMLDivElement;
-  let sectionContent!: HTMLElement;
   let btnUnlink!: HTMLElement;
 
   const [captionEl, setCaptionEl] = createSignal<HTMLElement>();
+  const [chatlistElement, setChatlistElement] = createSignal<HTMLElement>();
   const [sectionCaption, setSectionCaption] = createSignal<LangPackKey>();
   const [isBroadcastSig, setIsBroadcastSig] = createSignal(false);
   const [createGroupHidden, setCreateGroupHidden] = createSignal(false);
@@ -171,7 +171,10 @@ const ChatDiscussion: Component = () => {
           d.append(br.cloneNode(), br.cloneNode(), i18n('Discussion.Set.PrivateGroup'));
         }
 
-        if(groupChatFull._ === 'chatFull' || groupChatFull.pFlags.hidden_prehistory) {
+        if(
+          groupChatFull._ === 'chatFull' ||
+          (groupChatFull._ === 'channelFull' && groupChatFull.pFlags.hidden_prehistory)
+        ) {
           d.append(br.cloneNode(), br.cloneNode(), i18n('DiscussionLinkGroupAlertHistory'));
         }
 
@@ -192,7 +195,7 @@ const ChatDiscussion: Component = () => {
         busy = false;
       }, {listenerSetter: tab.listenerSetter});
 
-      sectionContent.append(chatlist);
+      setChatlistElement(chatlist);
 
       const loadPromises: Promise<any>[] = [];
 
@@ -287,7 +290,8 @@ const ChatDiscussion: Component = () => {
     <>
       <div ref={stickerContainer} class="sticker-container" />
       <div class="caption">{captionEl()}</div>
-      <Section caption={sectionCaption()} contentProps={{ref: (el) => sectionContent = el}}>
+      <Section caption={sectionCaption()}>
+        <Show keyed when={chatlistElement()}>{(element) => element}</Show>
         <Show when={isBroadcastSig() && !createGroupHidden()}>
           <Button
             class="btn-primary btn-transparent primary"

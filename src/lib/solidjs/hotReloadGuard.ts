@@ -1,7 +1,7 @@
 import {createContext, useContext} from 'solid-js';
 
-import AppMediaViewer, {onMediaCaptionClick} from '@components/appMediaViewer';
-import AppMediaViewerStatic from '@components/appMediaViewerStatic';
+import AppMediaViewer, {onMediaCaptionClick} from '@components/mediaViewer';
+import AppMediaViewerStatic from '@components/mediaViewer/static';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
 import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
@@ -9,6 +9,7 @@ import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
 import PaidMessagesInterceptor from '@components/chat/paidMessagesInterceptor';
 import {pickLanguage} from '@components/chat/translation';
+import type CommunityLinkSection from '@components/communities/communityLinkSection';
 import confirmationPopup from '@components/confirmationPopup';
 import {default as createEmojiDropdownButton, useEmojiDropdown} from '@components/emojiDropdownButton';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
@@ -19,16 +20,15 @@ import PasswordMonkey from '@components/monkeys/password';
 import PasswordInputField from '@components/passwordInputField';
 import PeerProfileAvatars from '@components/peerProfileAvatars';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
-import PopupElement from '@components/popups';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import showLimitPopup from '@components/popups/limit';
 import showMyQrCodePopup from '@components/popups/myQrCode';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
-import PopupPremium from '@components/popups/premium';
-import PopupSendGift from '@components/popups/sendGift';
+import showPremiumPopup from '@components/popups/premium';
+import showSendGiftPopup from '@components/popups/sendGift';
 import showStarsRatingPopup from '@components/popups/starsRating';
-import PopupToggleReadDate from '@components/popups/toggleReadDate';
+import showToggleReadDatePopup from '@components/popups/toggleReadDate';
 import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import {AppSidebarLeft} from '@components/sidebarLeft';
@@ -63,7 +63,7 @@ import {AppImManager} from '@lib/appImManager';
 import I18n, {i18n, join} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {RootScope} from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
@@ -89,7 +89,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PasswordInputField: typeof PasswordInputField;
   InputFieldTsx: typeof InputFieldTsx;
   PasswordMonkey: typeof PasswordMonkey;
-  PopupPremium: typeof PopupPremium;
+  showPremiumPopup: typeof showPremiumPopup;
   EmoticonsDropdown: typeof EmoticonsDropdown;
   EmojiTab: typeof EmojiTab;
   appDialogsManager: AppDialogsManager;
@@ -98,8 +98,7 @@ export type SolidJSHotReloadGuardContextValue = {
   I18n: typeof I18n;
   i18n: typeof i18n;
   join: typeof join;
-  PopupElement: typeof PopupElement;
-  PopupToggleReadDate: typeof PopupToggleReadDate;
+  showToggleReadDatePopup: typeof showToggleReadDatePopup;
   wrapSticker: typeof wrapSticker;
   wrapTopicNameButton: typeof wrapTopicNameButton;
   wrapRichText: typeof wrapRichText;
@@ -118,7 +117,7 @@ export type SolidJSHotReloadGuardContextValue = {
   BusinessHours: typeof BusinessHours;
   avatarNew: typeof avatarNew;
   PeerTitleTsx: typeof PeerTitleTsx;
-  PopupSendGift: typeof PopupSendGift;
+  showSendGiftPopup: typeof showSendGiftPopup;
   showBirthdayPopup: typeof showBirthdayPopup;
   saveMyBirthday: typeof saveMyBirthday;
   showMyQrCodePopup: typeof showMyQrCodePopup;
@@ -155,6 +154,7 @@ export type SolidJSHotReloadGuardContextValue = {
   usePeerTranslation: typeof usePeerTranslation;
   showSharingPickerPopup: typeof showSharingPickerPopup;
   PaidMessagesInterceptor: typeof PaidMessagesInterceptor;
+  CommunityLinkSection: typeof CommunityLinkSection;
 };
 
 

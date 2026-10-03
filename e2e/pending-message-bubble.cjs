@@ -30,6 +30,8 @@ const assert = require('node:assert/strict');
         Object.assign(chat, {
           bubbles: {'42_122.0001': pending, '42_123': confirmed},
           skippedMids: new Set(),
+          bubblesToReplace: new Map(),
+          hiddenLinksPendingBubbles: new Set(),
           bubbleGroups: {removeAndUnmountBubble: (bubble) => bubble.remove()}
         });
         if(scenario === 'no-pending') {

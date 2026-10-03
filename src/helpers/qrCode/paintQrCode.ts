@@ -1,3 +1,4 @@
+import {buildPublicLink} from '@helpers/publicLink';
 import pause from '@helpers/schedulers/pause';
 import textToSvgURL from '@helpers/textToSvgURL';
 
@@ -77,13 +78,20 @@ export async function paintQrCode(options: PaintQrOptions) {
   // qr-code-styling races the image-load against a 1s upper bound — matches the
   // legacy behaviour so we don't leave the host stuck behind a never-loading logo.
   let drawingPromise: Promise<void>;
-  if(qrCode._drawingPromise) {
-    drawingPromise = qrCode._drawingPromise;
+  const internalDrawingPromise = qrCode._drawingPromise || qrCode._canvasDrawingPromise;
+  if(internalDrawingPromise) {
+    drawingPromise = internalDrawingPromise;
   } else {
+    const image = qrCode._canvas?._image;
     drawingPromise = Promise.race([
       pause(1000),
       new Promise<void>((resolve) => {
-        qrCode._canvas._image.addEventListener('load', () => {
+        if(!image || image.complete) {
+          window.requestAnimationFrame(() => resolve());
+          return;
+        }
+
+        image.addEventListener('load', () => {
           window.requestAnimationFrame(() => resolve());
         }, {once: true});
       })
@@ -95,10 +103,10 @@ export async function paintQrCode(options: PaintQrOptions) {
 }
 
 /**
- * Builds the public `t.me/<username>` link encoded in a user's QR code (the
+ * Builds the configured public username link encoded in a user's QR code (the
  * "My QR code" popup). Kept beside `paintQrCode` so the QR callers share one
  * place for the link shape.
  */
-export function buildTelegramUserQrUrl(username: string) {
-  return `https://t.me/${username}`;
+export function buildTelegramUserQrUrl(username: string, prefix?: string) {
+  return buildPublicLink(username, prefix);
 }

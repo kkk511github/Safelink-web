@@ -1,5 +1,6 @@
 import SuperMessagePort from '@lib/superMessagePort';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import type {ThreadMemoryStats} from '@lib/debug/memoryStats';
 
 export type EmojiCompositorMethods = {
   attachRenderer: (p: {rendererId: number, canvas: OffscreenCanvas, dpr: number, fadeEnabled: boolean}) => void, // [canvas] in transfer; the initial color arrives via the immediately-following configRenderer
@@ -13,16 +14,18 @@ export type EmojiCompositorMethods = {
   clearRenderer: (p: {rendererId: number}) => void,
   suspendRenderer: (p: {rendererId: number, suspended: boolean}) => void, // freeze last pixels while every element is paused but on-screen
 
-  // sticker path: a 1:1 player<->canvas surface (rlottie 'canvas' offscreen mode routed here instead
-  // of presenting inside the shared rlottie worker, which is incompatible with OffscreenCanvas). Keyed
-  // by the rlottie item reqId - the same id its decoded frames arrive tagged with over decodePort.
+  // sticker path: a 1:1 player<->canvas surface (lottie 'canvas' offscreen mode routed here instead
+  // of presenting inside the shared lottie worker, which is incompatible with OffscreenCanvas). Keyed
+  // by the lottie item reqId - the same id its decoded frames arrive tagged with over decodePort.
   attachSticker: (p: {reqId: number, canvases: OffscreenCanvas[], color?: string}) => void, // [...canvases] in transfer; canvases are already sized to the render resolution
   detachSticker: (p: {reqId: number}) => void,
   resizeSticker: (p: {reqId: number, width: number, height: number}) => void,
   configSticker: (p: {reqId: number, color?: string}) => void,
   presentSticker: (p: {reqId: number}) => void, // re-blit the latest frame (no-blink ensurePresented / nudgePresent)
 
-  decodePort: (p: {workerId: number}, source: MessageEventSource, event: MessageEvent) => void // MessagePort arrives in event.ports[0]
+  decodePort: (p: {workerId: number}, source: MessageEventSource, event: MessageEvent) => void, // MessagePort arrives in event.ports[0]
+
+  memoryStats: (p: void) => ThreadMemoryStats // see @lib/debug/memoryStats
 };
 
 export type EmojiCompositorEvents = {

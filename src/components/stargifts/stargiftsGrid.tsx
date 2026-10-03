@@ -1,9 +1,11 @@
+import {buildPublicLink, getPublicLinkPrefix} from '@helpers/publicLink';
 import {createMemo, For, onCleanup, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import {StarsStar} from '@components/popups/stars';
 import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import rootScope from '@lib/rootScope';
@@ -24,9 +26,11 @@ import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import transferStarGift from '@components/popups/transferStarGift';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {StaticCheckbox} from '@components/staticCheckbox';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import Modes from '@config/modes';
 import tsNow from '@helpers/tsNow';
-import PopupStarGiftWear from '@components/popups/starGiftWear';
+import {openStarGiftWear} from '@components/popups/starGiftWear';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
@@ -61,8 +65,9 @@ function StarGiftGridItem(props: {
           text: 'ShareFile',
           verify: () => raw._ === 'starGiftUnique',
           onClick: () => {
-            showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
-              rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
+            showSharingPicker2Popup().then(async({peerId, threadId, monoforumThreadId}) => {
+              const text = buildPublicLink('nft/' + (raw as StarGift.starGiftUnique).slug, await getPublicLinkPrefix());
+              rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text});
               appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
             });
           }
@@ -79,13 +84,13 @@ function StarGiftGridItem(props: {
           icon: 'link',
           text: 'CopyLink',
           verify: () => raw._ === 'starGiftUnique',
-          onClick: () => {
-            copyTextToClipboard('https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug);
+          onClick: async() => {
+            copyTextToClipboard(buildPublicLink('nft/' + (raw as StarGift.starGiftUnique).slug, await getPublicLinkPrefix()));
             toastNew({langPackKey: 'LinkCopied'});
           }
         },
         {
-          icon: 'gem_transfer_outline',
+          icon: 'gem_transfer',
           text: 'StarGiftTransferFull',
           verify: () => isEditableUniqueGift,
           onClick: () => {
@@ -132,7 +137,7 @@ function StarGiftGridItem(props: {
           }
         }),
         {
-          icon: isWearing ? 'crownoff_outline' : 'crown_outline',
+          icon: isWearing ? 'crownoff' : 'crown',
           text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
           verify: () => isEditableUniqueGift,
           onClick: async() => {
@@ -153,12 +158,12 @@ function StarGiftGridItem(props: {
                 });
               }
             } else {
-              PopupStarGiftWear.open(props.item, profilePeerId);
+              openStarGiftWear(props.item, profilePeerId);
             }
           }
         },
         {
-          icon: saved.pFlags.unsaved ? 'eye' : 'eyecross_outline',
+          icon: saved.pFlags.unsaved ? 'eye' : 'eyecross',
           text: saved.pFlags.unsaved ? 'Show' : 'Hide',
           verify: () => isIncoming || isEditableUniqueGift,
           onClick: () => {
@@ -177,6 +182,7 @@ function StarGiftGridItem(props: {
     }
   })
 
+  const ariaLabel = () => props.item.raw.title || I18n.format('StarGiftTitle', true);
   const isPinned = () => props.item.saved?.pFlags.pinned_to_top;
   const isPremium = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.pFlags.require_premium && props.item.raw.availability_remains > 0;
   const isLocked = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.locked_until_date > tsNow(true);
@@ -196,16 +202,28 @@ function StarGiftGridItem(props: {
       style={{
         '--overlay-color': rgbaToHexa(changeBrightness(getRgbColorFromTelegramColor(props.item.collectibleAttributes?.backdrop?.edge_color ?? 0), 0.9))
       }}
+      role={props.hasSelection ? 'checkbox' : 'button'}
+      aria-checked={props.hasSelection ? !!props.selected : undefined}
+      tabindex={Modes.a11y ? 0 : undefined}
+      aria-label={ariaLabel()}
       onClick={props.onClick}
+      onKeyDown={buttonKeyDown}
       ref={containerRef}
     >
-      {props.hasSelection && (
+      {props.hasSelection && (Modes.a11y ? (
+        <StaticCheckbox
+          round
+          aria-hidden="true"
+          class={/* @once */ styles.checkbox}
+          checked={props.selected}
+        />
+      ) : (
         <CheckboxFieldTsx
           round
           class={/* @once */ styles.checkbox}
           checked={props.selected}
         />
-      )}
+      ))}
 
       {isPremium() && (
         <div class={/* @once */ styles.itemPremiumBackground} />
@@ -221,11 +239,11 @@ function StarGiftGridItem(props: {
       )}
 
       {isPinned() && !props.item.resellOnlyTon && (
-        <IconTsx icon="pin2" class={/* @once */ styles.itemPin} />
+        <IconTsx icon="pin2_filled" class={/* @once */ styles.itemPin} />
       )}
 
       {isLocked() && (
-        <IconTsx icon="time_lock" class={/* @once */ styles.itemLock} />
+        <IconTsx icon="time_lock_filled" class={/* @once */ styles.itemLock} />
       )}
 
       {props.item.resellOnlyTon && props.view !== 'transfer' && (

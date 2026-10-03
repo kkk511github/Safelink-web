@@ -3,7 +3,7 @@ import Button from '@components/buttonTsx';
 import PasswordInputField from '@components/passwordInputField';
 import InputField from '@components/inputField';
 import MediaHeader from '@components/mediaHeader';
-import focusWhenConnected from '@helpers/dom/focusWhenConnected';
+import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import AuthCard from '@/pages/AuthCard';
 import {useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
@@ -46,7 +46,7 @@ export default function SetupPasswordCard() {
     }
   }
   let cancelFocus: () => void;
-  onMount(() => { cancelFocus = focusWhenConnected(password.input); });
+  onMount(() => { cancelFocus = focusWhenSettled(password.input); });
   onCleanup(() => cancelFocus?.());
   return <AuthCard class={styles.pagePassword} header={<MediaHeader>
     <MediaHeader.Sticker name="TwoFactorSetupMonkeyIdle" size={120}/>

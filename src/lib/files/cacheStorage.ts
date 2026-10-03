@@ -71,6 +71,20 @@ export default class CacheStorageController implements FileStorage {
 
   private static disabledPromisesByKey: Map<string, CancellablePromise<void>> = new Map();
 
+  // * A cache.put hands the body to the browser process; while it is in flight the bytes are held on
+  // * both sides. An operation that never settles (the timeout below rejects the CALLER, not the
+  // * underlying put) pins them for good - so count them. See memoryStats.
+  private static inFlightOperations = 0;
+  private static inFlightSaveBytes = 0;
+
+  public static getStats() {
+    return {
+      storages: this.STORAGES.length,
+      inFlightOperations: this.inFlightOperations,
+      inFlightSaveBytes: this.inFlightSaveBytes
+    };
+  }
+
   // private log: ReturnType<typeof logger> = logger('CS');
 
   constructor(private dbName: CacheStorageDbName) {
@@ -245,7 +259,7 @@ export default class CacheStorageController implements FileStorage {
       );
     }
 
-    return this.timeoutOperation((cache) => cache.put('/' + entryName, result));
+    return this.timeoutOperation((cache) => cache.put('/' + entryName, result), undefined, size);
   }
 
   public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
@@ -280,11 +294,20 @@ export default class CacheStorageController implements FileStorage {
     return this.save({entryName: fileName, response, size: blob.size}).then(() => blob as Blob);
   }
 
-  public timeoutOperation<T>(callback: (cache: Cache) => Promise<T>, operationTimeout = defaultOperationTimeout) {
+  // * `bytes` is only for accounting (see memoryStats): the counters follow the UNDERLYING
+  // * operation, not the caller's promise - the timeout below rejects the caller while cache.put
+  // * keeps running and keeps holding the body.
+  public timeoutOperation<T>(
+    callback: (cache: Cache) => Promise<T>,
+    operationTimeout = defaultOperationTimeout,
+    bytes = 0
+  ) {
     if(!this.useStorage) {
       return Promise.reject(makeError('STORAGE_OFFLINE'));
     }
 
+    ++CacheStorageController.inFlightOperations;
+    CacheStorageController.inFlightSaveBytes += bytes;
     return new Promise<T>(async(resolve, reject) => {
       let rejected = false;
       const timeout = setTimeout(() => {
@@ -307,9 +330,11 @@ export default class CacheStorageController implements FileStorage {
         resolve(res);
       } catch(err) {
         reject(err);
+      } finally {
+        --CacheStorageController.inFlightOperations;
+        CacheStorageController.inFlightSaveBytes -= bytes;
+        clearTimeout(timeout);
       }
-
-      clearTimeout(timeout);
     });
   }
 

@@ -9,8 +9,8 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import generateTitleIcons from '@components/generateTitleIcons';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
-import lottieLoader from '@lib/rlottie/lottieLoader';
-import {AsAllChatsType} from '@lib/appDialogsManager';
+import lottieLoader from '@lib/lottie/lottieLoader';
+import type {AsAllChatsType} from '@lib/appDialogsManager';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 
 export type PeerTitleOptions = {

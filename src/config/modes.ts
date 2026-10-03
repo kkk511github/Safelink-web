@@ -13,6 +13,10 @@ const hasCustomMtprotoWebSocket = !!import.meta.env.VITE_MTPROTO_WS_URL;
 const Modes = {
   test: searchParams.get('test') === '1'/*  || true */,
   debug: location.search.indexOf('debug=1') > 0,
+  // Preview-only QA override: exercise the non-contact link gate even when
+  // the server does not expose report_spam / block_contact for the peer.
+  forceHideNonContactLinks: !!import.meta.env.VITE_PREVIEW &&
+    location.search.indexOf('forceHideNonContactLinks=1') > 0,
   http: false,
   ssl: true, // location.search.indexOf('ssl=1') > 0 || location.protocol === 'https:' && location.search.indexOf('ssl=0') === -1,
   asServiceWorker: !!import.meta.env.VITE_MTPROTO_SW,
@@ -20,6 +24,17 @@ const Modes = {
   noSharedWorker: location.search.indexOf('noSharedWorker=1') > 0,
   noServiceWorker: location.search.indexOf('noServiceWorker=1') > 0,
   noOffscreenCanvas: location.search.indexOf('noOffscreenCanvas=1') > 0,
+  // Kill switch for the SHARED object-URL lifecycle: with it on, worker-minted
+  // blob URLs are never evicted from the caches, never revoked, and pins are
+  // not reported — the old leak-forever behaviour for shared media.
+  // Tab-local one-off URLs (ObjectURLScope: editor previews, upload previews,
+  // decoded voice) are NOT covered: disposing those is self-contained and was
+  // a plain leak fix, so it stays active even here. Neither are the handful of
+  // pre-existing raw URL.revokeObjectURL call sites (recording, rtmp, download).
+  // * OFF everywhere by default — the lifecycle is live in production too.
+  // * ?noObjectUrlRevoke=1 forces it on to fall back to the old behaviour
+  //   (it reaches the worker too — makeWorkerURL forwards query params).
+  noObjectUrlRevoke: location.search.indexOf('noObjectUrlRevoke=1') > 0,
   // Run MTProto + crypto entirely in the main thread (debug only). Loops the
   // worker entries back through a MessageChannel in the same realm so
   // breakpoints / call stacks span the whole pipeline. Multi-tab features
@@ -28,7 +43,16 @@ const Modes = {
   // by `bash scripts/start-preview.sh --no-worker`.
   noWorker: location.search.indexOf('noWorker=1') > 0 || !!import.meta.env.VITE_NO_WORKER,
   multipleTransports: !hasCustomMtprotoWebSocket && !!(import.meta.env.VITE_MTPROTO_AUTO && import.meta.env.VITE_MTPROTO_HAS_HTTP && import.meta.env.VITE_MTPROTO_HAS_WS) && location.search.indexOf('noMultipleTransports=1') === -1,
-  noPfs: true || location.search.indexOf('noPfs=1') > 0
+  // Perfect Forward Secrecy: every networker talks over a temporary auth key
+  // bound to the stored permanent one (auth.bindTempAuthKey), replaced once it
+  // expires or the server forgets it. Off by default; ?pfs=1 turns it on (the
+  // worker sees it too — makeWorkerURL forwards query params).
+  pfs: !hasCustomMtprotoWebSocket && location.search.indexOf('pfs=1') > 0,
+  // The keyboard and screen-reader layer: focus traps, roving tab stops, focus
+  // rings, key routing, inert off-screen columns, pinch zoom. Off by default
+  // until it settles; ?a11y=1 turns it on. ARIA names and roles stay either way,
+  // since nobody without assistive technology can tell they are there.
+  a11y: location.search.indexOf('a11y=1') > 0
 };
 
 if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {

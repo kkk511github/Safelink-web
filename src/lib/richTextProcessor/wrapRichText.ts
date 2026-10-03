@@ -9,6 +9,7 @@ import {MessageEntity} from '@layer';
 import encodeSpoiler from '@lib/richTextProcessor/encodeSpoiler';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
+import setExternalToAnchor, {getElectronHelpers} from '@helpers/electronHelpers';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import EMOJI_VERSIONS_SUPPORTED from '@environment/emojiVersionsSupport';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
@@ -20,26 +21,32 @@ import CustomEmojiElement, {CustomEmojiElements} from '@lib/customEmoji/element'
 import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import {setDirection} from '@helpers/dom/setInnerHTML';
 import I18n, {i18n} from '@lib/langPack';
-import Icon from '@components/icon';
-import {CodeLanguageAliases, highlightCode} from '@/codeLanguages';
+import {createCodeHeaderButton} from '@helpers/dom/codeBlockClick';
+import {CodeLanguageAliases, highlightCode, highlightCodeAuto} from '@/codeLanguages';
 import callbackify from '@helpers/callbackify';
 import findIndexFrom from '@helpers/array/findIndexFrom';
 import {observeResize} from '@components/resizeObserver';
-import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import DotRenderer from '@components/dotRenderer';
-import isMixedScriptUrl from '@helpers/string/isMixedScriptUrl';
+import isSuspiciousUrl from '@helpers/string/isSuspiciousUrl';
 import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
 import formatFormattedDate from '@helpers/date/formatFormattedDate';
 import formatRelativeTime from '@helpers/date/formatRelativeTime';
 import tsNow from '@helpers/tsNow';
+import filterDisabledEntities, {markMessageLinkEntity} from '@lib/richTextProcessor/filterDisabledEntities';
+import {setRichTextButton} from '@lib/richTextProcessor/richTextButtons';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
   contextSite: string,
   highlightUsername: string,
+  /** Render navigation entities as ordinary text and disable rich-surface navigation. */
   noLinks: boolean,
+  /** Disable navigation owned by a rich surface without broadening the entity filter. */
+  noNavigation: boolean,
   noLinebreaks: boolean,
   noCommands: boolean,
+  /** Keep streamed code blocks formatted without scheduling syntax work per reveal frame. */
+  noCodeHighlight: boolean,
   wrappingDraft: boolean,
   // mustWrapEmoji: boolean,
   fromBot: boolean,
@@ -52,6 +59,8 @@ export type WrapRichTextOptions = Partial<{
   isSelectable: boolean,
   whitelistedDomains?: string[],
   passMaskedLinks?: boolean,
+  disabledEntities?: ReadonlySet<MessageEntity['_']>,
+  onEntitiesDisabled?: () => void,
 
   contextHashtag?: string,
 
@@ -106,12 +115,17 @@ function onQuoteResize(entry: ResizeObserverEntry) {
   target.classList.toggle('is-truncated', !isExpanded);
 }
 
-function makeQuoteCollapsable(element: HTMLElement) {
+export function makeQuoteCollapsable(element: HTMLElement) {
   element.classList.add('quote-like-collapsable');
 
-  const collapseIcon = document.createElement('span');
-  collapseIcon.classList.add('quote-like-icon', 'quote-like-collapse');
-  element.append(collapseIcon);
+  // A disclosure button, so the keyboard and screen readers reach it too. It only has to take
+  // the press: the host's click on the quote (`onQuoteClick`) folds and unfolds it.
+  const collapseButton = document.createElement('button');
+  collapseButton.type = 'button';
+  collapseButton.classList.add('quote-like-icon', 'quote-like-collapse');
+  collapseButton.setAttribute('aria-label', I18n.format('Chat.Quote.FullText', true));
+  collapseButton.setAttribute('aria-expanded', 'false');
+  element.append(collapseButton);
 
   return observeResize(element, onQuoteResize);
 }
@@ -123,6 +137,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
   const fragment = document.createDocumentFragment();
   if(!text) {
     return fragment;
+  }
+
+  const disabledEntities = options.disabledEntities;
+  if(disabledEntities && !options.nasty) {
+    const entities = options.entities ?? parseEntities(text);
+    options.entities = filterDisabledEntities(entities, disabledEntities);
+    if(options.entities.length !== entities.length) {
+      options.onEntitiesDisabled?.();
+    }
   }
 
   const nasty = options.nasty ??= {
@@ -293,14 +316,23 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           const headerName = document.createElement('span');
           headerName.classList.add('code-header-name');
           headerName.append(languageName || i18n('CopyCode'));
-          const headerWrapButton = Icon('menu', 'code-header-button', 'code-header-toggle-wrap');
-          header.append(headerName, headerWrapButton, Icon('copy', 'code-header-button', 'code-header-copy'));
+          const headerWrapButton = createCodeHeaderButton(
+            'menu',
+            'code-header-toggle-wrap'
+          );
+          header.append(
+            headerName,
+            headerWrapButton,
+            createCodeHeaderButton('copy_alt', 'code-header-copy')
+          );
 
           container.append(header, content);
 
-          const result = languageName && highlightCode(fullEntityText, languageName);
+          const result = !options.noCodeHighlight && (languageName ?
+            highlightCode(fullEntityText, languageName) :
+            !entityLanguage ? highlightCodeAuto(fullEntityText).then((highlight) => highlight?.html) : undefined);
           result && callbackify(result, (html) => {
-            if(html) {
+            if(html && (!options.middleware || options.middleware())) {
               element.innerHTML = html;
             }
           });
@@ -359,17 +391,31 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      case 'messageEntityRichButton': {
+        element = document.createElement('span');
+        // a link button is the link it carries (the text url inside), one control rather than two
+        if(entity.button.type._ !== 'inlineButtonTypeUrl') {
+          element.setAttribute('role', 'button');
+        }
+        setRichTextButton(element, entity.button);
+        break;
+      }
+
       case 'messageEntityAnchor': {
         element = document.createElement('span');
         element.id = entity.name;
+        if((entity as MessageEntity & {richTextReference?: boolean}).richTextReference) {
+          element.classList.add('tg-reference');
+        }
         break;
       }
 
       case 'messageEntityPhone': {
         if(!(options.noLinks && !passEntities[entity._])) {
+          const target = (entity as MessageEntity & {richTextTarget?: string}).richTextTarget || fullEntityText;
           element = document.createElement('a');
           element.classList.add('phone-url');
-          (element as HTMLAnchorElement).href = encodeEntities('tel:' + fullEntityText);
+          (element as HTMLAnchorElement).href = encodeEntities('tel:' + target);
         }
         break;
       }
@@ -519,8 +565,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityLinebreak': {
-        // slice linebreaks before and after quote
-        if(options.ignoreNextIndex === nasty.i || (options.wrappingDraft && nextEntity?._ === 'messageEntityBlockquote' && nextEntity.offset === endOffset)) {
+        // The block boundary replaces one separator in messages and drafts.
+        if(options.ignoreNextIndex === nasty.i || (!options.noTextFormat && nextEntity?._ === 'messageEntityBlockquote' && nextEntity.offset === endOffset)) {
           usedText = true;
         } else if(options.wrappingDraft && IS_FIREFOX) {
           element = document.createElement('br');
@@ -576,7 +622,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
               masked = true;
             }
           } else {
-            masked = isMixedScriptUrl(url);
+            masked = isSuspiciousUrl(url);
             // inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 
@@ -594,16 +640,13 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             onclick = undefined;
           }
 
-          const href = (currentContext || typeof electronHelpers === 'undefined') ?
-            url :
-            `javascript:electronHelpers.openExternal('${url}');`;
-
           element = document.createElement('a');
           element.className = 'anchor-url';
-          (element as HTMLAnchorElement).href = href;
+          (element as HTMLAnchorElement).href = url;
 
-          if(!(currentContext || typeof electronHelpers !== 'undefined')) {
-            setBlankToAnchor(element as HTMLAnchorElement);
+          if(!currentContext) {
+            // under Electron the link belongs to the system browser rather than the app window
+            (getElectronHelpers() ? setExternalToAnchor : setBlankToAnchor)(element as HTMLAnchorElement);
           }
 
           if(onclick) {
@@ -616,21 +659,24 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityEmail': {
         if(!options.noLinks && !passEntities[entity._]) {
+          const target = (entity as MessageEntity & {richTextTarget?: string}).richTextTarget || fullEntityText;
           element = document.createElement('a');
-          (element as HTMLAnchorElement).href = encodeEntities('mailto:' + fullEntityText);
+          (element as HTMLAnchorElement).href = encodeEntities('mailto:' + target);
           setBlankToAnchor(element as HTMLAnchorElement);
         }
 
         break;
       }
 
+      case 'messageEntityCashtag':
       case 'messageEntityHashtag': {
         const contextUrl = !options.noLinks && SITE_HASHTAGS[contextSite];
         if(contextUrl) {
-          const hashtag = fullEntityText.slice(1);
+          const tag = fullEntityText.slice(1);
+          const linkTag = entity._ === 'messageEntityCashtag' ? '$' + tag : tag;
           element = document.createElement('a');
           element.className = 'anchor-hashtag';
-          (element as HTMLAnchorElement).href = contextUrl.replace('{1}', encodeURIComponent(hashtag));
+          (element as HTMLAnchorElement).href = contextUrl.replace('{1}', encodeURIComponent(linkTag));
           if(contextExternal) {
             setBlankToAnchor(element as HTMLAnchorElement);
           } else {
@@ -685,10 +731,19 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           if(!IS_FIREFOX) { // Firefox has very poor performance when drawing on canvas
             element = document.createElement('span');
             element.className = 'bluff-spoiler';
-            element.append(...partText.split('').map((encodedLetter) => createElementFromMarkup(`<span class="bluff-spoiler-letter">${encodedLetter}</span>`)))
+            element.append(...partText.split('').map((encodedLetter) => {
+              const letter = document.createElement('span');
+              letter.className = 'bluff-spoiler-letter';
+              letter.textContent = encodedLetter;
+              return letter;
+            }));
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'bluff-spoiler-canvas';
+            element.append(canvas);
             fragment.append(element);
 
-            DotRenderer.attachBluffTextSpoilerTarget(element);
+            DotRenderer.attachBluffTextSpoilerTarget(element, options.textColor);
 
             usedText = true;
           }
@@ -814,7 +869,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
         }
 
-        element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
+        element.classList.add(
+          'quote-like',
+          'quote-like-border',
+          'quote-like-icon',
+          'input-collapsible-quote'
+        );
         setDirection(element);
 
         processingBlockElement = true;
@@ -847,6 +907,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
     }
+
+    if(element) markMessageLinkEntity(element, entity);
 
     if(processingBlockElement) {
       let foundNextLinebreakIndex = -1;
@@ -903,7 +965,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       // if(!options.wrappingDraft) {
-      //   const i = Icon('quote', 'quote-icon');
+  //   const i = Icon('quote_filled', 'quote-icon');
       //   element.textContent = partText;
       //   usedText = true;
       //   element.prepend(i);
