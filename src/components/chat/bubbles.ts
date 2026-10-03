@@ -891,12 +891,9 @@ export default class ChatBubbles {
       const fullTempMid = makeFullMid(tempMessage);
       const fullMid = makeFullMid(message);
 
-      let _bubble = this.getBubble(fullTempMid);
+      let _bubble = this.confirmPendingBubble(fullTempMid, fullMid, mid);
       if(_bubble) {
         const bubble = _bubble;
-        delete this.bubbles[fullTempMid];
-        this.bubbles[fullMid] = bubble;
-        bubble.dataset.mid = '' + mid;
         if(this.chat.type === ChatType.Scheduled) {
           this.bubbleGroups.changeBubbleMessage(bubble, message);
         }
@@ -4212,6 +4209,22 @@ export default class ChatBubbles {
         this.setBubbleSendingStatus(bubble, 'read');
       }
     }
+  }
+
+  private confirmPendingBubble(fullTempMid: FullMid, fullMid: FullMid, mid: number) {
+    const bubble = this.getBubble(fullTempMid);
+    if(!bubble) return;
+
+    const confirmedBubble = this.getBubble(fullMid);
+    if(confirmedBubble && confirmedBubble !== bubble) {
+      // Keep the local media/upload context, but remove the already rendered echo.
+      this.destroyBubble(confirmedBubble);
+    }
+
+    delete this.bubbles[fullTempMid];
+    this.bubbles[fullMid] = bubble;
+    bubble.dataset.mid = '' + mid;
+    return bubble;
   }
 
   public destroyBubble(

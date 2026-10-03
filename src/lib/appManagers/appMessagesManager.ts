@@ -7395,11 +7395,11 @@ export class AppMessagesManager extends AppManager {
     const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const mid = this.appMessagesIdsManager.generateMessageId(update.id, channelId);
     this.pendingByMessageId[mid] = randomId;
-    // const {storage} = pendingData;
-    // const message = this.getMessageFromStorage(storage, mid);
-    // if(message) { // if message somehow already exists
-    //   this.checkPendingMessage(message);
-    // }
+    // A pushed message can arrive before the RPC's random_id acknowledgement.
+    const message = this.getMessageFromStorage(pendingData.storage, mid);
+    if(message && message.peerId === peerId && !message.pFlags.is_outgoing) {
+      this.checkPendingMessage(message);
+    }
   };
 
   private onUpdateNewMessage = (update: Update.updateNewDiscussionMessage | Update.updateNewMessage | Update.updateNewChannelMessage) => {
