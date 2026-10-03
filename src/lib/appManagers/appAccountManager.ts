@@ -3,7 +3,8 @@ import ctx from '@environment/ctx';
 import longFromBytes from '@helpers/long/longFromBytes';
 import tsNow from '@helpers/tsNow';
 import makeError from '@helpers/makeError';
-import {loginRequestWithDeadline, WEB_AUTH_TOKEN_UNSUPPORTED} from '@helpers/safelinkLogin';
+import {WEB_AUTH_TOKEN_UNSUPPORTED} from '@helpers/safelinkLogin';
+import safelinkCapability from '@helpers/safelinkCapability';
 import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update} from '@layer';
 import {DcId, TrueDcId} from '@types';
 import AccountController from '@lib/accounts/accountController';
@@ -341,14 +342,8 @@ export default class AppAccountManager extends AppManager {
     });
   }
 
-  private async supportsWebTokenAuthorization() {
-    if(!import.meta.env.VITE_MTPROTO_WS_URL) return true;
-    try {
-      const config = await loginRequestWithDeadline(Promise.resolve(this.apiManager.getAppConfig()), 10000);
-      return config?.safelink_web_auth_tokens_enabled === true;
-    } catch{
-      return false;
-    }
+  private supportsWebTokenAuthorization() {
+    return safelinkCapability(() => this.apiManager.getAppConfig(), 'safelink_web_auth_tokens_enabled');
   }
 
   /**

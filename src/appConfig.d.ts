@@ -2,6 +2,7 @@ export interface MTAppConfig {
   safelink_registration_invite_required?: boolean;
   safelink_registration_password_required?: boolean;
   safelink_web_auth_tokens_enabled?: boolean;
+  safelink_top_peers_enabled?: boolean;
   test?:                                     number;
   emojies_animated_zoom?:                    number;
   emojies_send_dice?:                        any[];

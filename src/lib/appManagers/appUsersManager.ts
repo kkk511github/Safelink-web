@@ -29,6 +29,7 @@ import callbackify from '@helpers/callbackify';
 import {NULL_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import pause from '@helpers/schedulers/pause';
+import safelinkCapability from '@helpers/safelinkCapability';
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline' | 'bots_app' | 'bots_guestchat';
@@ -1141,22 +1142,23 @@ export class AppUsersManager extends AppManager {
   }
 
   /**
-   * Takes a peer out of the top correspondents, on the server and in the cached list
+   * Removes a cached correspondent; resets the server rating only when supported.
    */
-  public resetTopPeerRating(peerId: PeerId) {
+  public async resetTopPeerRating(peerId: PeerId) {
     const type: TopPeerType = 'correspondents';
-    return this.apiManager.invokeApi('contacts.resetTopPeerRating', {
-      category: {_: 'topPeerCategoryCorrespondents'},
-      peer: this.appPeersManager.getInputPeerById(peerId)
-    }).then(() => {
-      delete this.getTopPeersPromises[type];
-      return this.appStateManager.getState().then((state) => {
-        const cached = state.topPeersCache[type];
-        if(!cached?.peers) return;
-        cached.peers = cached.peers.filter((topPeer) => topPeer.id !== peerId);
-        this.appStateManager.pushToState('topPeersCache', state.topPeersCache);
+    if(await safelinkCapability(() => this.apiManager.getAppConfig(), 'safelink_top_peers_enabled')) {
+      await this.apiManager.invokeApi('contacts.resetTopPeerRating', {
+        category: {_: 'topPeerCategoryCorrespondents'},
+        peer: this.appPeersManager.getInputPeerById(peerId)
       });
-    });
+    }
+
+    delete this.getTopPeersPromises[type];
+    const state = await this.appStateManager.getState();
+    const cached = state.topPeersCache[type];
+    if(!cached?.peers) return;
+    cached.peers = cached.peers.filter((topPeer) => topPeer.id !== peerId);
+    this.appStateManager.pushToState('topPeersCache', state.topPeersCache);
   }
 
   public getBlocked(offset = 0, limit = 0, myStoriesFrom?: boolean) {
