@@ -114,7 +114,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
     managers.apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true}).then(async(response) => {
       switch(response._) {
         case 'auth.authorization':
-          await managers.apiManager.setUser(response.user);
+          await managers.apiManager.completeAuthorization(response);
           toIm();
           break;
         case 'auth.authorizationSignUpRequired':

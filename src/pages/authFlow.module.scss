@@ -325,3 +325,11 @@ $corner-button-size: 2.5rem;
   opacity: 0;
   transform: translateX(-24px);
 }
+.invitePlaceholder {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--secondary-text-color);
+  pointer-events: none;
+}

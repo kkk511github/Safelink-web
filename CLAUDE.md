@@ -38,6 +38,11 @@ Launch an authorized local preview with `bash scripts/start-preview.sh` (never
 plain `vite`) — it mints a fresh per-preview auth + picks a free port. Flags and
 details: see the script header. `.claude/launch.json` is wired to it.
 
+For SafeLink login/registration UI tests, use `bash scripts/start-preview.sh --login`.
+This mode does not mint a Telegram authorization or read a saved preview session.
+`scripts/test-safelink-auth-ui.cjs` mocks registration and password RPCs; it does
+not create real accounts or send verification codes.
+
 ## Directory Structure
 
 ```

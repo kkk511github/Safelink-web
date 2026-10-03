@@ -69,6 +69,9 @@ const USE_DEV_HTTP2 = !USE_SSL && !process.env.TWEB_PREVIEW && !process.env.VITE
 const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
+  proxy: process.env.VITE_PREVIEW === '1' ? {
+    '/apiws': {target: 'https://web.safelink.chat', ws: true, changeOrigin: true}
+  } : undefined,
   watch: {
     // NB: anchor on rootDir. A worktree checkout's own path contains
     // ".claude/worktrees/<name>/", so a bare '**/.claude/**' glob would also match

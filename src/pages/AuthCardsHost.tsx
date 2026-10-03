@@ -36,6 +36,8 @@ if(import.meta.hot) import.meta.hot.accept();
 const SignInCard = lazy(() => import('@/pages/cards/SignInCard'));
 const AuthCodeCard = lazy(() => import('@/pages/cards/AuthCodeCard'));
 const PasswordCard = lazy(() => import('@/pages/cards/PasswordCard'));
+const SetupPasswordCard = lazy(() => import('@/pages/cards/SetupPasswordCard'));
+const RegistrationCheckCard = lazy(() => import('@/pages/cards/RegistrationCheckCard'));
 const SignUpCard = lazy(() => import('@/pages/cards/SignUpCard'));
 const EmailRecoverCard = lazy(() => import('@/pages/cards/EmailRecoverCard'));
 const SignQRCard = lazy(() => import('@/pages/cards/SignQRCard'));
@@ -95,6 +97,17 @@ export default function AuthCardsHost(): JSX.Element {
   /* ---------- transition into the IM page ---------- */
 
   async function toIm(): Promise<void> {
+    let policy: Awaited<ReturnType<typeof rootScope.managers.apiManager.registrationPolicy>>;
+    try {
+      policy = await rootScope.managers.apiManager.registrationPolicy();
+    } catch{
+      navigateAuth({name: 'registrationCheck'});
+      return;
+    }
+    if(policy.passwordRequired) {
+      navigateAuth({name: 'setupPassword'});
+      return;
+    }
     // `#page-chats` hides the cards the instant it shows, but the fixed corner
     // buttons (z-index: 100) sit above it — fade them out now so they don't
     // linger until the host is disposed ~1s later.
@@ -203,6 +216,12 @@ function CardsTransition(): JSX.Element {
       </Match>
       <Match when={matchCard('password')} keyed>
         {(spec) => <PasswordCard spec={spec} />}
+      </Match>
+      <Match when={matchCard('setupPassword')} keyed>
+        {(_spec) => <SetupPasswordCard />}
+      </Match>
+      <Match when={matchCard('registrationCheck')} keyed>
+        {(_spec) => <RegistrationCheckCard />}
       </Match>
       <Match when={matchCard('signUp')} keyed>
         {(spec) => <SignUpCard spec={spec} />}

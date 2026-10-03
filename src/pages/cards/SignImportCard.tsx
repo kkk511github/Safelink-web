@@ -46,7 +46,7 @@ export default function SignImportCard(props: {spec: Spec}) {
       }, {dcId, ignoreErrors: true});
 
       if(authorization._ === 'auth.authorization') {
-        await managers.apiManager.setUser(authorization.user);
+        await managers.apiManager.completeAuthorization(authorization);
         nextNav = () => toIm();
       }
     } catch(err) {

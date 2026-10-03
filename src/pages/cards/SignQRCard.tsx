@@ -153,7 +153,7 @@ export default function SignQRCard(_props: {spec: Spec}) {
 
       if(loginToken._ === 'auth.loginTokenSuccess') {
         const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
-        await managers.apiManager.setUser(authorization.user);
+        await managers.apiManager.completeAuthorization(authorization);
         toIm();
         return true;
       }

@@ -22,22 +22,36 @@
 #   --no-worker   run MTProto + crypto in the main thread (debug only). Sets
 #                 Modes.noWorker at build time so breakpoints span the full
 #                 pipeline without needing ?noWorker=1 in the URL.
+#   --login       preview login/registration without minting any authorization.
 #
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 REPO="$(pwd)"
 
-ID=""; PORT=""; REMINT=0; NO_WORKER=0
+ID=""; PORT=""; REMINT=0; NO_WORKER=0; LOGIN=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --id) ID="${2:?}"; shift 2;;
     --port) PORT="${2:?}"; shift 2;;
     --remint) REMINT=1; shift;;
     --no-worker) NO_WORKER=1; shift;;
+    --login) LOGIN=1; shift;;
     *) echo "[start-preview] unknown arg: $1" >&2; exit 1;;
   esac
 done
+
+# Authentication previews never mint or reuse an authorized Telegram session.
+if [ "$LOGIN" = 1 ]; then
+  if [ -z "$PORT" ]; then
+    for p in $(seq 9001 9099); do
+      if ! lsof -ti ":$p" >/dev/null 2>&1; then PORT="$p"; break; fi
+    done
+  fi
+  [ -n "$PORT" ] || { echo "[start-preview] no free port" >&2; exit 1; }
+  echo "[start-preview] login preview: http://localhost:$PORT"
+  exec env VITE_PREVIEW=1 pnpm exec vite --config vite.config.ts --host 127.0.0.1 --port "$PORT" --strictPort
+fi
 
 # default id = worktree dir name; sanitise for use as a filename
 [ -n "$ID" ] || ID="$(basename "$REPO")"

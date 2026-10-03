@@ -7,7 +7,6 @@ import PasskeyLoginButton from '@components/passkeyLoginButton';
 import MediaHeader from '@components/mediaHeader';
 import TelInputField from '@components/telInputField';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import App from '@config/app';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import focusWhenConnected from '@helpers/dom/focusWhenConnected';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
@@ -120,19 +119,11 @@ export default function SignInCard(_props: {spec: Spec}) {
     );
 
     const phone_number = telInputField.value;
-    managers.apiManager.invokeApi('auth.sendCode', {
-      phone_number,
-      api_id: App.id,
-      api_hash: App.hash,
-      settings: {
-        _: 'codeSettings',
-        pFlags: {}
-      }
-    }).then(async(code) => {
+    managers.apiManager.sendLoginCode(phone_number).then(async(code) => {
       if(code._ === 'auth.sentCodeSuccess') {
         const {authorization} = code;
         if(authorization._ === 'auth.authorization') {
-          await managers.apiManager.setUser(authorization.user);
+          await managers.apiManager.completeAuthorization(authorization);
           toIm();
           return;
         }
@@ -146,6 +137,9 @@ export default function SignInCard(_props: {spec: Spec}) {
       setSubmitting(false);
 
       switch(err.type) {
+        case 'SESSION_PASSWORD_NEEDED':
+          navigate({name: 'password'});
+          break;
         case 'PHONE_NUMBER_INVALID':
           telInputField.setError();
           replaceContent(telInputField.label, i18n('Login.PhoneLabelInvalid'));

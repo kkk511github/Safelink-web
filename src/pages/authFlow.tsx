@@ -26,6 +26,8 @@ export type CardName =
   | 'signIn'
   | 'authCode'
   | 'password'
+  | 'setupPassword'
+  | 'registrationCheck'
   | 'signUp'
   | 'emailRecover'
   | 'signQR'
@@ -35,6 +37,8 @@ export type CardPayloadMap = {
   signIn: void;
   authCode: AuthSentCode.authSentCode & {phone_number?: string};
   password: void;
+  setupPassword: void;
+  registrationCheck: void;
   signUp: {phone_number: string, phone_code_hash: string};
   emailRecover: {email_pattern: string};
   signQR: void;

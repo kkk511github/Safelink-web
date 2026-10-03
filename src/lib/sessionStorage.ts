@@ -8,6 +8,7 @@ import {AccountSessionData} from '@lib/accounts/types';
 
 
 type StorageValues = {
+  safelink_future_auth_tokens?: string[],
   state_id: number,
 
   account1: AccountSessionData,

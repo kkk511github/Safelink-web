@@ -7,7 +7,8 @@
 
 import type {UserAuth} from '@appManagers/constants';
 import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions, TrueDcId} from '@types';
-import type {MethodDeclMap} from '@layer';
+import type {MethodDeclMap, AuthAuthorization} from '@layer';
+import {decodeLoginTokens, prependLoginToken, registrationCodeHash, waitForLogout, loginRequestWithDeadline} from '@helpers/safelinkLogin';
 import type TcpObfuscated from '@lib/mtproto/transports/tcpObfuscated';
 import sessionStorage from '@lib/sessionStorage';
 import MTPNetworker, {MTMessage} from '@lib/mtproto/networker';
@@ -280,9 +281,13 @@ export class ApiManager extends ApiManagerMethods {
     const logoutPromises: Promise<any>[] = [];
 
     for(let dcId = 1; dcId <= 5; dcId++) {
+      // SafeLink DC aliases share one auth session; log it out only once.
+      if(import.meta.env.VITE_MTPROTO_WS_URL && dcId !== (this.baseDcId || App.baseDcId)) continue;
       const key = `dc${dcId as TrueDcId}_auth_key` as const;
       if(accountData[key]) {
-        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId, ignoreErrors: true}));
+        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId, ignoreErrors: true, stopTime: Date.now() + 10000}).then(async(result) => {
+          await this.rememberLoginToken(result.future_auth_token);
+        }));
       }
     }
 
@@ -335,15 +340,45 @@ export class ApiManager extends ApiManagerMethods {
       this.rootScope.dispatchEvent('logging_out', {accountNumber, migrateTo: migrateAccountTo});
     };
 
-    setTimeout(clear, 1e3);
+    await waitForLogout(Promise.allSettled(logoutPromises), import.meta.env.VITE_MTPROTO_WS_URL ? 10000 : 1000);
+    return clear();
+  }
 
-    // return;
+  private async rememberLoginToken(token?: Uint8Array) {
+    if(!token?.length) return;
+    const tokens = await sessionStorage.get('safelink_future_auth_tokens', false) || [];
+    await sessionStorage.set({safelink_future_auth_tokens: prependLoginToken(tokens, token)});
+  }
 
-    return Promise.all(logoutPromises).catch((error) => {
-      error.handled = true;
-    }).finally(clear)/* .then(() => {
-      location.pathname = '/';
-    }) */;
+  public async completeAuthorization(auth: AuthAuthorization.authAuthorization) {
+    await this.rememberLoginToken(auth.future_auth_token);
+    await this.setUser(auth.user);
+  }
+
+  public async sendLoginCode(phone_number: string) {
+    const tokens = decodeLoginTokens(await sessionStorage.get('safelink_future_auth_tokens', false));
+    return this.invokeApi('auth.sendCode', {
+      phone_number,
+      api_id: App.id,
+      api_hash: App.hash,
+      settings: {_: 'codeSettings', pFlags: {}, logout_tokens: tokens.length ? tokens : undefined}
+    }, {ignoreErrors: true});
+  }
+
+  public async registrationPolicy() {
+    if(!import.meta.env.VITE_MTPROTO_WS_URL) return {inviteRequired: false, passwordRequired: false};
+    const config = await loginRequestWithDeadline(Promise.resolve(this.getAppConfig(true)), 10000);
+    return {
+      inviteRequired: config['safelink_registration_invite_required'] === true,
+      passwordRequired: config['safelink_registration_password_required'] === true
+    };
+  }
+
+  public registerAccount(params: MethodDeclMap['auth.signUp']['req'], invite: string) {
+    return this.invokeApi('auth.signUp', {
+      ...params,
+      phone_code_hash: registrationCodeHash(params.phone_code_hash, invite)
+    }, {ignoreErrors: true});
   }
 
   public static async forceLogOutAll() {

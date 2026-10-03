@@ -547,6 +547,22 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   setDocumentLangPackProperties(langPack);
 
   let authState = stateResult.state.authState;
+  if(authState._ === 'authStateSignedIn' && import.meta.env.VITE_MTPROTO_WS_URL) {
+    let passwordRequired = false;
+    let policyFailed = false;
+    try {
+      passwordRequired = (await rootScope.managers.apiManager.registrationPolicy()).passwordRequired;
+    } catch{
+      policyFailed = true;
+    }
+    if(passwordRequired || policyFailed) {
+      const {mountAuthFlow} = await import('./pages/mountAuthFlow');
+      const {navigateAuth} = await import('./pages/authFlow');
+      mountAuthFlow({_: 'authStateSignIn'});
+      navigateAuth({name: policyFailed ? 'registrationCheck' : 'setupPassword'});
+      return;
+    }
+  }
 
   const hash = location.hash;
   const splitted = hash.split('?');
