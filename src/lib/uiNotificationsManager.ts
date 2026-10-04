@@ -37,6 +37,7 @@ import {useAppSettings} from '@stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {createEffect, createRoot, on} from 'solid-js';
+import useAppName from '@stores/appName';
 import appNavigationController from '@components/appNavigationController';
 
 type MyNotification = Notification & {
@@ -126,6 +127,15 @@ export class UiNotificationsManager {
   private audioAssetPlayer: AudioAssetPlayer<Record<'notification', string>>;
 
   private appSettings: StateSettings;
+
+  constructor() {
+    createRoot(() => {
+      createEffect(() => {
+        this.titleBackup = useAppName()();
+        if(!this.titleChanged) document.title = this.titleBackup;
+      });
+    });
+  }
 
   private get settings() {
     return this.appSettings.notifications;

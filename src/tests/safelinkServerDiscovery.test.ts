@@ -1,7 +1,7 @@
 import {createHash, createPublicKey, webcrypto} from 'node:crypto';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {SAFELINK_RSA_KEY} from '@config/safelink';
-import {discoverServerPublicKey, getServerDiscoveryUrl, parseServerPublicKey} from '@lib/mtproto/safelinkServerDiscovery';
+import {discoverServer, discoverServerPublicKey, getServerDiscoveryUrl, parseServerPublicKey} from '@lib/mtproto/safelinkServerDiscovery';
 
 function descriptor() {
   const key = createPublicKey({key: {
@@ -40,5 +40,11 @@ describe('SafeLink RSA discovery', () => {
     expect(await discoverServerPublicKey('/apiws', 'https://web.safelink.chat')).toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith('https://web.safelink.chat/.well-known/safelink-client.json',
       expect.objectContaining({redirect: 'error', credentials: 'omit'}));
+  });
+
+  it('reads the name field without changing RSA discovery', async() => {
+    vi.stubGlobal('crypto', webcrypto);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify({...descriptor(), name: '  Server Name  '})}));
+    expect(await discoverServer('/apiws', 'https://web.safelink.chat')).toEqual({publicKey: SAFELINK_RSA_KEY, name: 'Server Name'});
   });
 });

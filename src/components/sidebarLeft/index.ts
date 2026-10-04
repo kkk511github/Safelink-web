@@ -1,4 +1,5 @@
 import {createEffect, createRoot, createSignal, on} from 'solid-js';
+import useAppName from '@stores/appName';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
@@ -1048,7 +1049,7 @@ export class AppSidebarLeft extends SidebarSlider {
       buttons: filtered
     });
 
-    menu.append(getVersionLink());
+    menu.append(getVersionLink(middleware));
     menu.classList.add('sidebar-tools-submenu');
 
     const darkModeBtn = btns[0].element;
@@ -1813,7 +1814,7 @@ const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;
 
-function getVersionLink() {
+function getVersionLink(middleware: Middleware) {
   const btnMenuFooter = document.createElement('a');
   btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
   setBlankToAnchor(btnMenuFooter);
@@ -1824,7 +1825,12 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.textContent = `SafeLink Web${App.suffix} ${App.version} (${App.build})`;
+  createRoot((dispose) => {
+    middleware.onClean(dispose);
+    createEffect(() => {
+      t.textContent = `${useAppName()()} Web${App.suffix} ${App.version} (${App.build})`;
+    });
+  });
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

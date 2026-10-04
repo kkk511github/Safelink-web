@@ -18,6 +18,7 @@ import AccountController from '@lib/accounts/accountController';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import commonStateStorage from '@lib/commonStateStorage';
 import {TrueDcId} from '@types';
+import useAppName from '@stores/appName';
 
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
@@ -39,6 +40,7 @@ const DEFAULT_LOGIN_COUNTRY = 'CN';
  */
 export default function SignInCard(_props: {spec: Spec}) {
   const {managers, navigate, toIm} = useAuthFlow();
+  const appName = useAppName();
 
   let cancelled = false;
 
@@ -249,7 +251,7 @@ export default function SignInCard(_props: {spec: Spec}) {
               </svg>
             }
           />
-          <MediaHeader.Title tag="h1">{i18n('Login.Title')}</MediaHeader.Title>
+          <MediaHeader.Title tag="h1" class="text-overflow-wrap">{appName()}</MediaHeader.Title>
           <MediaHeader.Subtitle class="secondary">{i18n('Login.StartText')}</MediaHeader.Subtitle>
         </MediaHeader>
       }

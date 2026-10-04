@@ -1,4 +1,6 @@
 export interface MTAppConfig {
+  safelink_app_name?: string;
+  safelink_server_origin?: string;
   safelink_registration_invite_required?: boolean;
   safelink_registration_password_required?: boolean;
   safelink_web_auth_tokens_enabled?: boolean;

@@ -63,6 +63,8 @@ import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSideba
 import appNavigationController from '@components/appNavigationController';
 import {preventCrossTabDynamicImportDeadlock} from '@helpers/preventDeadlock';
 import appChatBackground from '@components/chat/bubbles/chatBackground';
+import {initializeAppName} from '@stores/appName';
+import '@lib/uiNotificationsManager';
 
 // import commonStateStorage from '@lib/commonStateStorage';
 // import { STATE_INIT } from '@config/state';
@@ -506,6 +508,8 @@ if(import.meta.env.DEV) {
   // * (3)
   await sendAllStatesPromise;
   console.timeLog(TIME_LABEL, 'sent all states (1)');
+
+  initializeAppName(stateResult.state.appConfig, rootScope.managers);
 
   const setUnreadMessagesText = () => {
     const text = I18n.format('UnreadMessages', true);

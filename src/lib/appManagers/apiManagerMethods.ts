@@ -7,6 +7,7 @@ import {AppManager} from '@appManagers/manager';
 import rootScope from '@lib/rootScope';
 import {UserAuth} from '@appManagers/constants';
 import {MTMessage} from '@lib/mtproto/networker';
+import {getServerDiscoveryUrl} from '@lib/mtproto/safelinkServerDiscovery';
 
 type HashResult = {
   hash: number,
@@ -64,7 +65,14 @@ export default abstract class ApiManagerMethods extends AppManager {
     }, {once: true});
 
     const promise = this.appStateManager.getState().then((state) => {
-      return state.appConfig;
+      const config = state.appConfig;
+      if(import.meta.env.VITE_MTPROTO_WS_URL && config.safelink_server_origin !==
+        getServerDiscoveryUrl(import.meta.env.VITE_MTPROTO_WS_URL, globalThis.location.origin)) {
+        // A config hash from a different endpoint must never yield NotModified here.
+        config.hash = 0;
+        delete config.safelink_app_name;
+      }
+      return config;
     });
 
     return promise;
@@ -329,6 +337,9 @@ export default abstract class ApiManagerMethods extends AppManager {
     ignoreRestrictionReasons(appConfig.ignore_restriction_reasons ?? []);
 
     if(save) {
+      if(import.meta.env.VITE_MTPROTO_WS_URL) {
+        appConfig.safelink_server_origin = getServerDiscoveryUrl(import.meta.env.VITE_MTPROTO_WS_URL, globalThis.location.origin);
+      }
       appConfig.cachedTime = Date.now();
       this.appStateManager.pushToState('appConfig', appConfig);
     }

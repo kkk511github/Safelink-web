@@ -2,6 +2,7 @@ import bytesToHex from '@helpers/bytes/bytesToHex';
 import base64ToBytes from '@helpers/string/base64ToBytes';
 import selfHostedWebSocketUrl from '@lib/mtproto/selfHostedWebSocketUrl';
 import type {RSAPublicKeyHex} from '@lib/mtproto/rsaKeysManager';
+import {normalizeAppName} from '@helpers/safelinkAppName';
 
 export function getServerDiscoveryUrl(wsUrl: string, origin: string) {
   const url = new URL(selfHostedWebSocketUrl(wsUrl, origin));
@@ -41,7 +42,7 @@ export async function parseServerPublicKey(value: unknown): Promise<RSAPublicKey
   return {modulus: bytesToHex(modulus), exponent};
 }
 
-export async function discoverServerPublicKey(wsUrl: string, origin: string): Promise<RSAPublicKeyHex | undefined> {
+export async function discoverServer(wsUrl: string, origin: string): Promise<{publicKey: RSAPublicKeyHex, name: string} | undefined> {
   try {
     const response = await fetch(getServerDiscoveryUrl(wsUrl, origin), {
       signal: AbortSignal.timeout(5000), redirect: 'error', credentials: 'omit', cache: 'no-store'
@@ -49,9 +50,14 @@ export async function discoverServerPublicKey(wsUrl: string, origin: string): Pr
     if(!response.ok) return;
     const body = await response.text();
     if(body.length > 4096) throw new Error('SafeLink discovery descriptor is too large');
-    return await parseServerPublicKey(JSON.parse(body));
+    const descriptor = JSON.parse(body);
+    return {publicKey: await parseServerPublicKey(descriptor), name: normalizeAppName(descriptor.name)};
   } catch{
     // Older servers may not publish discovery; only the pinned SafeLink key remains.
     return;
   }
+}
+
+export async function discoverServerPublicKey(wsUrl: string, origin: string): Promise<RSAPublicKeyHex | undefined> {
+  return (await discoverServer(wsUrl, origin))?.publicKey;
 }
