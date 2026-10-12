@@ -1,0 +1,22 @@
+.popup {
+  :global(.popup-container) { width: 440px; max-width: calc(100vw - 24px); }
+}
+
+.content { padding: 8px 12px 16px; }
+.group { border-bottom: 1px solid var(--border-color); padding: 4px 0; }
+.server { margin: 0; }
+.account { margin: 0 0 0 36px; }
+.endpoint { display: block; overflow-wrap: anywhere; font-size: 13px; }
+.details { margin: 12px 16px; }
+.details dt { color: var(--secondary-text-color); font-size: 13px; margin-top: 16px; }
+.details dd { margin: 6px 0 0; overflow-wrap: anywhere; }
+.fingerprint { font-family: monospace; font-size: 13px; line-height: 1.6; }
+.notice, .empty { color: var(--secondary-text-color); font-size: 14px; line-height: 1.5; margin: 12px 16px; }
+.empty { margin-left: 72px; }
+.error { color: var(--danger-color); margin: 12px 16px; overflow-wrap: anywhere; }
+.action { width: 100%; min-height: 48px; margin: 12px 0; white-space: normal; }
+
+@media (max-width: 480px) {
+  .account { margin-left: 20px; }
+  .content { padding-inline: 8px; }
+}

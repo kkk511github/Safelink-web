@@ -1,7 +1,7 @@
 import {createHash, createPublicKey, webcrypto} from 'node:crypto';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {SAFELINK_RSA_KEY} from '@config/safelink';
-import {discoverServer, discoverServerPublicKey, getServerDiscoveryUrl, parseServerPublicKey} from '@lib/mtproto/safelinkServerDiscovery';
+import {discoverServer, discoverServerIdentity, discoverServerPublicKey, getCachedServerIdentity, getServerDiscoveryUrl, parseServerPublicKey} from '@lib/mtproto/safelinkServerDiscovery';
 
 function descriptor() {
   const key = createPublicKey({key: {
@@ -46,5 +46,16 @@ describe('SafeLink RSA discovery', () => {
     vi.stubGlobal('crypto', webcrypto);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify({...descriptor(), name: '  Server Name  '})}));
     expect(await discoverServer('/apiws', 'https://web.safelink.chat')).toEqual({publicKey: SAFELINK_RSA_KEY, name: 'Server Name'});
+  });
+
+  it('caches only verified identities for readonly details without replacing them on failed validation', async() => {
+    vi.stubGlobal('crypto', webcrypto);
+    const body = {...descriptor(), name: 'Verified Server'};
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify(body)}));
+    const identity = await discoverServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat');
+    expect(getCachedServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat')).toEqual(identity);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify({...body, server_id: '0'.repeat(64)})}));
+    await expect(discoverServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat')).rejects.toThrow('identity');
+    expect(getCachedServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat')).toEqual(identity);
   });
 });

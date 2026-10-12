@@ -4,6 +4,7 @@ import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {discoverServer, getServerDiscoveryUrl} from '@lib/mtproto/safelinkServerDiscovery';
 import type {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
+import {getSafeLinkWebSocketUrl, selectedServer} from '@config/safelinkServer';
 
 const [appName, setAppName] = createRoot(() => createSignal(DEFAULT_APP_NAME));
 let generation = 0;
@@ -14,13 +15,13 @@ rootScope.addEventListener('app_config', (config) => applyConfig?.(config));
 export function initializeAppName(cachedConfig: MTAppConfig, managers: AppManagers) {
   const currentGeneration = ++generation;
   const account = getCurrentAccount();
-  const wsUrl = import.meta.env.VITE_MTPROTO_WS_URL;
+  const wsUrl = getSafeLinkWebSocketUrl();
   const origin = location.origin;
   const server = wsUrl ? getServerDiscoveryUrl(wsUrl, origin) : undefined;
   let hasConfig = false;
   const isCurrent = () => currentGeneration === generation && account === getCurrentAccount();
 
-  setAppName(DEFAULT_APP_NAME);
+  setAppName(selectedServer?.name || DEFAULT_APP_NAME);
   applyConfig = (config) => {
     if(!isCurrent() || !config || config.safelink_server_origin !== server) return;
     hasConfig = true;
@@ -30,7 +31,8 @@ export function initializeAppName(cachedConfig: MTAppConfig, managers: AppManage
 
   if(wsUrl) {
     discoverServer(wsUrl, origin).then((descriptor) => {
-      if(isCurrent() && !hasConfig && descriptor) setAppName(descriptor.name);
+      if(isCurrent() && !hasConfig && descriptor && (!selectedServer ||
+        descriptor.publicKey.modulus === selectedServer.publicKey.modulus)) setAppName(descriptor.name);
     });
   }
 

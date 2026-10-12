@@ -13,6 +13,7 @@ import bytesFromHex from '@helpers/bytes/bytesFromHex';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import bigInt from 'big-integer';
 import {discoverServerPublicKey} from '@lib/mtproto/safelinkServerDiscovery';
+import {getSafeLinkWebSocketUrl, selectedServer} from '@config/safelinkServer';
 
 export type RSAPublicKeyHex = {
   modulus: string,
@@ -88,8 +89,8 @@ export class RSAKeysManager {
   private preparePromise: Promise<void> = null;
 
   constructor() {
-    if(import.meta.env.VITE_MTPROTO_WS_URL) {
-      this.publisKeysHex = [SAFELINK_RSA_KEY];
+    if(getSafeLinkWebSocketUrl()) {
+      this.publisKeysHex = [selectedServer?.publicKey || SAFELINK_RSA_KEY];
     } else if(Modes.test) {
       this.publisKeysHex = this.testPublicKeysHex;
     }
@@ -107,8 +108,8 @@ export class RSAKeysManager {
   }
 
   private async prepareKeys() {
-    if(import.meta.env.VITE_MTPROTO_WS_URL) {
-      const key = await discoverServerPublicKey(import.meta.env.VITE_MTPROTO_WS_URL, globalThis.location.origin);
+    if(getSafeLinkWebSocketUrl() && !selectedServer) {
+      const key = await discoverServerPublicKey(getSafeLinkWebSocketUrl(), globalThis.location.origin);
       if(key) this.publisKeysHex = [key];
     }
     await Promise.all(this.publisKeysHex.map((keyParsed) => {

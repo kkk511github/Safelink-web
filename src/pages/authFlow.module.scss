@@ -326,7 +326,19 @@ $corner-button-size: 2.5rem;
   opacity: 1;
 }
 
-// Host exit before changeAccount (back button in AuthCardsHost.tsx).
+.serverNavigation {
+  position: absolute;
+  inset: 12px 64px auto 12px;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+
+  button { min-height: 40px; padding: 8px 12px; font-size: 14px; white-space: normal; }
+}
+
+// Host exit before account navigation (back button in AuthCardsHost.tsx).
 .hostExit {
   transition: 0.2s;
   transform: scale(1);

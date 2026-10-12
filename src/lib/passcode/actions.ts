@@ -20,13 +20,13 @@ export function usePasscodeActions() {
   async function disableCacheStorages() {
     CacheStorageController.temporarilyToggle(false);
     await apiManagerProxy.invoke('toggleCacheStorage', false);
-    await apiManagerProxy.serviceMessagePort.invoke('toggleCacheStorage', false);
+    await apiManagerProxy.serviceMessagePort?.invoke('toggleCacheStorage', false);
   }
 
   async function enableCacheStorages() {
     CacheStorageController.temporarilyToggle(true);
     await apiManagerProxy.invoke('toggleCacheStorage', true);
-    await apiManagerProxy.serviceMessagePort.invoke('toggleCacheStorage', true);
+    await apiManagerProxy.serviceMessagePort?.invoke('toggleCacheStorage', true);
   }
 
   async function clearCacheStorages() {
@@ -35,7 +35,7 @@ export function usePasscodeActions() {
     CacheStorageController.resetOpenEncryptableCacheStorages();
     await Promise.all([
       apiManagerProxy.invoke('resetEncryptableCacheStorages', void 0),
-      apiManagerProxy.serviceMessagePort.invoke('resetEncryptableCacheStorages', void 0)
+      apiManagerProxy.serviceMessagePort?.invoke('resetEncryptableCacheStorages', void 0)
     ]);
   }
 
@@ -64,7 +64,7 @@ export function usePasscodeActions() {
       encryptionKey
     };
     await apiManagerProxy.invoke('toggleUsingPasscode', togglePayload);
-    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {type: 'full', ...togglePayload});
+    await apiManagerProxy.serviceMessagePort?.invoke('toggleUsingPasscode', {type: 'full', ...togglePayload});
 
 
     rootScope.dispatchEvent('toggle_using_passcode', true);
@@ -97,7 +97,7 @@ export function usePasscodeActions() {
     await clearCacheStorages();
 
     await apiManagerProxy.invoke('toggleUsingPasscode', {isUsingPasscode: false});
-    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {type: 'full', isUsingPasscode: false});
+    await apiManagerProxy.serviceMessagePort?.invoke('toggleUsingPasscode', {type: 'full', isUsingPasscode: false});
 
     EncryptionKeyStore.save(null);
     DeferredIsUsingPasscode.resolveDeferred(false);
@@ -131,7 +131,7 @@ export function usePasscodeActions() {
       toStore,
       encryptionKey
     });
-    await apiManagerProxy.serviceMessagePort.invoke('saveEncryptionKey', encryptionKey);
+    await apiManagerProxy.serviceMessagePort?.invoke('saveEncryptionKey', encryptionKey);
 
     EncryptionKeyStore.save(encryptionKey);
 
@@ -155,7 +155,7 @@ export function usePasscodeActions() {
     EncryptionKeyStore.save(encryptionKey);
     await apiManagerProxy.invoke('saveEncryptionKey', encryptionKey);
     // Make sure we resolve the DeferredIsUsingPasscode as there is no storage available in SW to get the value
-    await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {type: 'full', isUsingPasscode: true, encryptionKey});
+    await apiManagerProxy.serviceMessagePort?.invoke('toggleUsingPasscode', {type: 'full', isUsingPasscode: true, encryptionKey});
 
     apiManagerProxy.invokeVoid('toggleLockOthers', false);
   }

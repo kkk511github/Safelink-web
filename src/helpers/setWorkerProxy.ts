@@ -1,5 +1,6 @@
 import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
 import {THREADED_WORKER_PROTOCOL_QUERY_PARAM} from '@lib/threadedWorkerTypes';
+import {ADD_SERVER_ACCOUNT_QUERY_PARAM, selectedServer, WORKER_SERVER_QUERY_PARAM} from '@config/safelinkServer';
 
 export function makeWorkerURL(url: string | URL) {
   if(!(url instanceof URL)) {
@@ -9,13 +10,17 @@ export function makeWorkerURL(url: string | URL) {
   if(location.search && url.protocol !== 'blob:') {
     const params = new URLSearchParams(location.search);
     params.forEach((value, key) => {
-      if(key === CURRENT_ACCOUNT_QUERY_PARAM || key === THREADED_WORKER_PROTOCOL_QUERY_PARAM) return;
+      if(key === CURRENT_ACCOUNT_QUERY_PARAM || key === THREADED_WORKER_PROTOCOL_QUERY_PARAM || key === WORKER_SERVER_QUERY_PARAM ||
+        key === 'returnServer' || key === 'returnAccount' || key === ADD_SERVER_ACCOUNT_QUERY_PARAM) return;
       (url as URL).searchParams.set(key, value);
     });
   }
 
   // exclude useless params
   (url as URL).searchParams.delete('swfix');
+  if(selectedServer && url.protocol !== 'blob:') {
+    (url as URL).searchParams.set(WORKER_SERVER_QUERY_PARAM, JSON.stringify(selectedServer));
+  }
 
   return url;
 }

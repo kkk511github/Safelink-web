@@ -71,14 +71,14 @@ import ReactionElement from '@components/chat/reaction';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import AccountController from '@lib/accounts/accountController';
 import {ActiveAccountNumber} from '@lib/accounts/types';
-import {MAX_ACCOUNTS, MAX_ACCOUNTS_FREE} from '@lib/accounts/constants';
+import {MAX_ACCOUNTS} from '@lib/accounts/constants';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
 import limitSymbols from '@helpers/string/limitSymbols';
 import filterAsync from '@helpers/array/filterAsync';
 import pause from '@helpers/schedulers/pause';
-import showAccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
+import showServerSelector from '@components/safelinkServerSelector';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -726,6 +726,10 @@ export class AppSidebarLeft extends SidebarSlider {
         const totalAccounts = await AccountController.getTotalAccounts();
         return totalAccounts < MAX_ACCOUNTS;
       }
+    }, {
+      icon: 'web_filled',
+      text: 'SafeLink.Servers',
+      onClick: showServerSelector
     }, newSubmenu, {
       icon: 'savedmessages',
       text: 'SavedMessages',
@@ -1778,35 +1782,8 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 
-  public addAccount = async(e?: MouseEvent | TouchEvent) => {
-    const totalAccounts = await AccountController.getTotalAccounts();
-    if(totalAccounts >= MAX_ACCOUNTS) return;
-
-    const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
-
-    if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
-      showAccountsLimitPopup();
-      return;
-    }
-
-    localStorage.setItem('previous-account', getCurrentAccount() + '');
-    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
-    const openTabs = apiManagerProxy.getOpenTabsCount();
-
-    const newTab = e?.ctrlKey || e?.metaKey || (openTabs <= 1 && isUsingPasscode);
-    if(!newTab) {
-      appImManager.goOffline();
-
-      localStorage.setItem('should-animate-auth', 'true');
-
-      const chatsPageEl = document.querySelector('.page-chats');
-      chatsPageEl.classList.add('main-screen-exit');
-      await doubleRaf();
-      chatsPageEl.classList.add('main-screen-exiting');
-      await pause(200);
-    }
-
-    changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);
+  public addAccount = () => {
+    showServerSelector();
   };
 }
 

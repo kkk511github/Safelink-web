@@ -1,0 +1,32 @@
+.wrap {
+  --primary-color: #3390ec;
+  --primary-color-rgb: 51, 144, 236;
+  --primary-text-color: #000;
+  --secondary-text-color: #707579;
+  --surface-color: #fff;
+  width: min(440px, calc(100% - 32px));
+  margin: 64px auto;
+  color: var(--primary-text-color);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.logo { width: 64px; height: 64px; }
+.wrap h1 { font-size: 26px; }
+.wrap h2 { font-size: 20px; }
+.wrap button { min-height: 48px; margin-top: 12px; white-space: normal; }
+.server { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--surface-color); color: inherit; border: 0; padding: 12px; }
+.avatar { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--primary-color); color: white; }
+.endpoint { display: block; font-size: 13px; color: var(--secondary-text-color); }
+:global(:where(.a11y)) .wrap button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+@media (prefers-color-scheme: dark) {
+  .wrap {
+    --primary-color: #8774e1;
+    --primary-color-rgb: 135, 116, 225;
+    --primary-text-color: #fff;
+    --secondary-text-color: #aaa;
+    --surface-color: #212121;
+  }
+  :global(.safelink-selection-error) { background: #181818; }
+  .server { background: #242424; }
+}

@@ -7,6 +7,7 @@
 
 import type {TrueDcId} from '@types';
 import langPackLocalVersion from '@/langPackLocalVersion';
+import {selectedServer} from '@config/safelinkServer';
 
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';
@@ -31,7 +32,7 @@ const App = {
   threads,
   lottieWorkers: threads,
   cryptoWorkers: threads,
-  interclientBroadcastChannel: 'tgweb'
+  interclientBroadcastChannel: 'tgweb' + (selectedServer ? `-${selectedServer.id}` : '')
 };
 
 if(App.isMainDomain) { // use Webogram credentials then

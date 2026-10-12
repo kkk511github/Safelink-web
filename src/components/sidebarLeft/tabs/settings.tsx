@@ -47,6 +47,7 @@ import {SettingsSearchItem} from '@lib/settingsSearch';
 import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
 import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
 import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
+import showServerSelector from '@components/safelinkServerSelector';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — wraps a sub-tab declaration. If the tab has a static `getInitArgs`,
@@ -389,6 +390,10 @@ const Settings = () => {
       </InlinePortal>
       {peerProfileElement}
       <Section>
+        <Row clickable={showServerSelector}>
+          <Row.Icon icon="web_filled" />
+          <Row.Title>{i18n('SafeLink.Servers')}</Row.Title>
+        </Row>
         <div class="profile-buttons">
           <For each={subTabConfigs}>
             {(item) => (

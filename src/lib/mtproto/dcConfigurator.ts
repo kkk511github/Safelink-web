@@ -16,7 +16,8 @@ import {IS_WEB_WORKER} from '@helpers/context';
 import {DcId} from '@types';
 import {getEnvironment} from '@environment/utils';
 import SocketProxied from '@lib/mtproto/transports/socketProxied';
-import selfHostedWebSocketUrl from './selfHostedWebSocketUrl';
+import selfHostedWebSocketUrl from '@lib/mtproto/selfHostedWebSocketUrl';
+import {getSafeLinkWebSocketUrl} from '@config/safelinkServer';
 
 export type TransportType = 'websocket' | 'https' | 'http';
 export type ConnectionType = 'client' | 'download' | 'upload';
@@ -55,8 +56,8 @@ export function constructTelegramWebSocketUrl(_dcId: DcId, connectionType: Conne
     return;
   }
 
-  if(import.meta.env.VITE_MTPROTO_WS_URL) {
-    return selfHostedWebSocketUrl(import.meta.env.VITE_MTPROTO_WS_URL, globalThis.location.origin);
+  if(getSafeLinkWebSocketUrl()) {
+    return selfHostedWebSocketUrl(getSafeLinkWebSocketUrl(), globalThis.location.origin);
   }
 
   const dcId = assertValidDcId(_dcId);

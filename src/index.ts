@@ -64,6 +64,8 @@ import appNavigationController from '@components/appNavigationController';
 import {preventCrossTabDynamicImportDeadlock} from '@helpers/preventDeadlock';
 import appChatBackground from '@components/chat/bubbles/chatBackground';
 import {initializeAppName} from '@stores/appName';
+import {ADD_SERVER_ACCOUNT_QUERY_PARAM, currentServerId} from '@config/safelinkServer';
+import {toast} from '@components/toast';
 import '@lib/uiNotificationsManager';
 
 // import commonStateStorage from '@lib/commonStateStorage';
@@ -424,7 +426,7 @@ if(import.meta.env.DEV) {
   };
 }
 
-/* false &&  */document.addEventListener('DOMContentLoaded', async() => {
+async function startApplication() {
   const perf = performance.now();
   randomlyChooseVersionFromSearch();
   setSidebarLeftWidth();
@@ -537,6 +539,20 @@ if(import.meta.env.DEV) {
   await apiManagerProxy.sendAllStates(allStates);
 
   console.timeLog(TIME_LABEL, 'sent all states (2)');
+
+  // Slot allocation needs this server's unlocked accounts and initialized Premium managers.
+  if(new URLSearchParams(location.search).get(ADD_SERVER_ACCOUNT_QUERY_PARAM) === '1') {
+    try {
+      const {addServerAccount} = await import('@lib/accounts/serverNavigation');
+      await addServerAccount(currentServerId);
+      return;
+    } catch(error) {
+      const url = new URL(location.href);
+      url.searchParams.delete(ADD_SERVER_ACCOUNT_QUERY_PARAM);
+      history.replaceState(history.state, '', url);
+      toast(error instanceof Error ? error.message : '无法添加账号，请重试');
+    }
+  }
 
   const [, setHasFoldersSidebar] = useHasFoldersSidebar();
   setHasFoldersSidebar(!!appSettings.tabsInSidebar);
@@ -702,4 +718,7 @@ if(import.meta.env.DEV) {
       await bootstrapIm();
     }
   }
-});
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startApplication, {once: true});
+else startApplication();

@@ -1,4 +1,4 @@
-import {JSX, Match, Show, Switch, children, createMemo, lazy, onMount} from 'solid-js';
+import {JSX, Match, Show, Switch, children, createMemo, createSignal, lazy, onCleanup, onMount} from 'solid-js';
 
 import Scrollable from '@components/scrollable2';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -8,9 +8,12 @@ import {doubleRaf} from '@helpers/schedulers';
 import pause from '@helpers/schedulers/pause';
 import classNames from '@helpers/string/classNames';
 import themeController from '@helpers/themeController';
-import {changeAccount} from '@lib/accounts/changeAccount';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
-import {getValidatedAccount} from '@lib/accounts/getValidatedAccount';
+import AccountController from '@lib/accounts/accountController';
+import {ACCOUNT_NUMBERS} from '@lib/accounts/serverProfiles';
+import {getLoginReturnTarget, ServerAccountTarget, switchServerAccount} from '@lib/accounts/serverNavigation';
+import {currentServerId} from '@config/safelinkServer';
+import showServerSelector from '@components/safelinkServerSelector';
 import I18n from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import sessionStorage from '@lib/sessionStorage';
@@ -27,6 +30,7 @@ import {
 import styles from '@/pages/authFlow.module.scss';
 import {bootstrapIm} from '@/pages/bootstrapIm';
 import Button from '@components/buttonTsx';
+import {toastNew} from '@components/toast';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -65,7 +69,10 @@ const SignImportCard = lazy(() => import('@/pages/cards/SignImportCard'));
  * no keep-alive: every card runs `onMount` / `onCleanup` on each visit.
  */
 export default function AuthCardsHost(): JSX.Element {
-  const showBackButton = getCurrentAccount() !== 1;
+  const [returnTarget, setReturnTarget] = createSignal<ServerAccountTarget>(getLoginReturnTarget());
+  const [leaving, setLeaving] = createSignal(false);
+  let disposed = false;
+  onCleanup(() => {disposed = true;});
 
   let hostEl!: HTMLElement;
   let scrollableEl!: HTMLDivElement;
@@ -75,7 +82,7 @@ export default function AuthCardsHost(): JSX.Element {
   const ctx: AuthFlowContextValue = {
     managers: rootScope.managers,
     current: currentCard,
-    navigate: navigateAuth,
+    navigate: (spec) => {if(!disposed && !leaving()) navigateAuth(spec);},
     back,
     toIm
   };
@@ -83,38 +90,55 @@ export default function AuthCardsHost(): JSX.Element {
   /* ---------- back button (returns to previous account) ---------- */
 
   async function back(): Promise<void> {
-    await sessionStorage.set({should_animate_main: 1});
-    const prevAccount = getValidatedAccount(await sessionStorage.get('previous_account'));
-    await sessionStorage.delete('previous_account');
+    const target = returnTarget();
+    if(!target || leaving() || disposed) return;
+    setLeaving(true);
+    try {
+      await sessionStorage.set({should_animate_main: 1});
+      await sessionStorage.delete('previous_account');
 
-    if(hostEl) {
-      hostEl.classList.add(styles.hostExit);
-      await doubleRaf();
-      hostEl.classList.add(styles.hostExiting);
-      await pause(200);
+      if(disposed) return;
+      if(hostEl) {
+        hostEl.classList.add(styles.hostExit);
+        await doubleRaf();
+        if(disposed) return;
+        hostEl.classList.add(styles.hostExiting);
+        await pause(200);
+      }
+
+      if(!disposed) await switchServerAccount(target, false, undefined, () => !disposed);
+    } catch{
+      if(disposed) return;
+      hostEl?.classList.remove(styles.hostExit, styles.hostExiting);
+      setLeaving(false);
+      toastNew({langPackKey: 'Error.AnError'});
     }
-
-    changeAccount(prevAccount);
   }
 
   /* ---------- transition into the IM page ---------- */
 
   async function toIm(): Promise<void> {
+    if(disposed || leaving()) return;
     let policy: Awaited<ReturnType<typeof rootScope.managers.apiManager.registrationPolicy>>;
     try {
       policy = await rootScope.managers.apiManager.registrationPolicy();
     } catch{
-      navigateAuth({name: 'registrationCheck'});
+      ctx.navigate({name: 'registrationCheck'});
       return;
     }
+    if(disposed || leaving()) return;
     if(policy.passwordRequired) {
-      navigateAuth({name: 'setupPassword'});
+      ctx.navigate({name: 'setupPassword'});
       return;
     }
     // `#page-chats` hides the cards the instant it shows, but the fixed corner
     // buttons (z-index: 100) sit above it — fade them out now so they don't
     // linger until the host is disposed ~1s later.
     hostEl.classList.add(styles.leaving);
+    const url = new URL(location.href);
+    url.searchParams.delete('returnServer');
+    url.searchParams.delete('returnAccount');
+    history.replaceState(history.state, '', url);
     await bootstrapIm();
   }
 
@@ -163,6 +187,13 @@ export default function AuthCardsHost(): JSX.Element {
     }
 
     runEnterSequence();
+    if(!returnTarget()) {
+      Promise.all(ACCOUNT_NUMBERS.map(async(accountNumber) => ({accountNumber, data: await AccountController.get(accountNumber)}))).then((accounts) => {
+        if(disposed || returnTarget()) return;
+        const previous = accounts.find((account) => account.accountNumber !== getCurrentAccount() && account.data.userId);
+        if(previous) setReturnTarget({serverId: currentServerId, accountNumber: previous.accountNumber});
+      }).catch(() => {});
+    }
   });
 
   /* ---------- render ---------- */
@@ -170,9 +201,10 @@ export default function AuthCardsHost(): JSX.Element {
   return (
     <AuthFlowContext.Provider value={ctx}>
       <main ref={hostEl} style={{opacity: 0}} class={classNames('whole', styles.host)} id="auth-pages">
-        {showBackButton && (
-          <Button.Icon icon="back" class={styles.closeButton} onClick={back} aria-label={I18n.format('StarsRating.Back', true)} />
-        )}
+        <nav class={styles.serverNavigation} aria-label={I18n.format('SafeLink.Servers', true)}>
+          <Show when={returnTarget()}><Button icon="back" primaryTransparent disabled={leaving()} text="SafeLink.Account.Return" onClick={back} /></Show>
+          <Button icon="web_filled" primaryTransparent disabled={leaving()} text="SafeLink.Servers" onClick={showServerSelector} />
+        </nav>
         <Button.Icon icon="darkmode_filled" class={styles.themeButton} onClick={toggleTheme} aria-label={I18n.format('DarkMode', true)} />
         <Scrollable
           ref={scrollableEl}

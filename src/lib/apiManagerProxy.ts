@@ -74,6 +74,7 @@ import SlicedArray, {SliceEnd} from '@helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '@appManagers/utils/messages/createHistoryStorage';
 import tabId from '@config/tabId';
 import Modes from '@config/modes';
+import {CAN_USE_PRIMARY_SERVICE_WORKER} from '@config/safelinkServer';
 import appNavigationController from '@components/appNavigationController';
 import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
@@ -782,7 +783,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   public isServiceWorkerOnline() {
-    return !!this.serviceWorkerRegistration;
+    return CAN_USE_PRIMARY_SERVICE_WORKER && !!this.serviceWorkerRegistration;
   }
 
   private _registerServiceWorker() {
@@ -843,6 +844,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private registerServiceWorker() {
+    // The existing SW has a single MTProto port. Never attach another server's worker to it.
+    if(!CAN_USE_PRIMARY_SERVICE_WORKER) return;
     if(!('serviceWorker' in navigator)) return;
 
     if(Modes.noServiceWorker) {

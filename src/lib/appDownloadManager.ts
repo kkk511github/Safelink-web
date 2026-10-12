@@ -21,6 +21,7 @@ import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import isWebFileLocation from '@appManagers/utils/webFiles/isWebFileLocation';
 import {MIME_TYPE_EXTENSION_MAP} from '@environment/mimeTypeMap';
 import {isObjectURL} from '@helpers/objectUrlUtils';
+import {CAN_USE_PRIMARY_SERVICE_WORKER} from '@config/safelinkServer';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -352,7 +353,7 @@ export class AppDownloadManager {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
 
-    const USE_SW = !IS_MOBILE_SAFARI && !!apiManagerProxy.serviceMessagePort;
+    const USE_SW = CAN_USE_PRIMARY_SERVICE_WORKER && !IS_MOBILE_SAFARI && !!apiManagerProxy.serviceMessagePort;
     // const USE_SW = true;
 
     const getOutFileName = () => {

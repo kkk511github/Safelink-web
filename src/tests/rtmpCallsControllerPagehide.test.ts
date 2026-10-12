@@ -7,6 +7,7 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 vi.mock('@config/debug', () => ({default: false, MOUNT_CLASS_TO: undefined}));
+vi.mock('@config/safelinkServer', () => ({CAN_USE_PRIMARY_SERVICE_WORKER: true}));
 vi.mock('@lib/apiManagerProxy', () => ({
   default: {serviceMessagePort: {addEventListener: vi.fn(), invokeVoid: vi.fn()}}
 }));

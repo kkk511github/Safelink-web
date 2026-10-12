@@ -1,5 +1,6 @@
 import type {InputFileLocation, InputGeoPoint, InputStickerSet, InputWebFileLocation} from '@layer';
 import type {DownloadOptions} from '@appManagers/apiFileManager';
+import {CAN_USE_PRIMARY_SERVICE_WORKER} from '@config/safelinkServer';
 
 const FILENAME_JOINER = '_';
 
@@ -63,6 +64,9 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
 
 export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download' | 'hls';
 export function getFileURL(type: FileURLType, options: DownloadOptions) {
+  if(!CAN_USE_PRIMARY_SERVICE_WORKER && ['stream', 'download', 'hls'].includes(type)) {
+    throw new Error('当前服务器不能使用主服务器的媒体 Service Worker');
+  }
   // console.log('getFileURL', location);
   // const perf = performance.now();
   const encoded = encodeURIComponent(JSON.stringify(options));

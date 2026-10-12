@@ -2,8 +2,10 @@ import {buildPublicLink, getPublicLinkPrefix} from '@helpers/publicLink';
 import {IS_SAFARI} from '@environment/userAgent';
 import {InputGroupCall} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import {CAN_USE_PRIMARY_SERVICE_WORKER} from '@config/safelinkServer';
 
 export function getRtmpStreamUrl(call: InputGroupCall): string {
+  if(!CAN_USE_PRIMARY_SERVICE_WORKER) throw new Error('当前服务器不支持 Service Worker 直播');
   const base = `/rtmp/${encodeURIComponent(JSON.stringify(call))}`;
 
   if(IS_SAFARI) return `${base}?hls=playlist&t=${Date.now()}`;

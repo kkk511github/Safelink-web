@@ -4,6 +4,13 @@ import selfHostedWebSocketUrl from '@lib/mtproto/selfHostedWebSocketUrl';
 import type {RSAPublicKeyHex} from '@lib/mtproto/rsaKeysManager';
 import {normalizeAppName} from '@helpers/safelinkAppName';
 
+type ServerIdentity = {publicKey: RSAPublicKeyHex, name: string, fingerprint: string};
+const verifiedIdentities = new Map<string, ServerIdentity>();
+
+export function getCachedServerIdentity(wsUrl: string, origin: string) {
+  return verifiedIdentities.get(getServerDiscoveryUrl(wsUrl, origin));
+}
+
 export function getServerDiscoveryUrl(wsUrl: string, origin: string) {
   const url = new URL(selfHostedWebSocketUrl(wsUrl, origin));
   if(url.username || url.password || (url.protocol !== 'wss:' &&
@@ -42,16 +49,23 @@ export async function parseServerPublicKey(value: unknown): Promise<RSAPublicKey
   return {modulus: bytesToHex(modulus), exponent};
 }
 
+export async function discoverServerIdentity(wsUrl: string, origin: string, signal = AbortSignal.timeout(5000)) {
+  const response = await fetch(getServerDiscoveryUrl(wsUrl, origin), {
+    signal, redirect: 'error', credentials: 'omit', cache: 'no-store'
+  });
+  if(!response.ok) throw new Error('无法获取服务器身份，请检查地址后重试');
+  const body = await response.text();
+  if(body.length > 4096) throw new Error('SafeLink discovery descriptor is too large');
+  const descriptor = JSON.parse(body);
+  const identity = {publicKey: await parseServerPublicKey(descriptor), name: normalizeAppName(descriptor.name), fingerprint: descriptor.server_id as string};
+  verifiedIdentities.set(getServerDiscoveryUrl(wsUrl, origin), identity);
+  return identity;
+}
+
 export async function discoverServer(wsUrl: string, origin: string): Promise<{publicKey: RSAPublicKeyHex, name: string} | undefined> {
   try {
-    const response = await fetch(getServerDiscoveryUrl(wsUrl, origin), {
-      signal: AbortSignal.timeout(5000), redirect: 'error', credentials: 'omit', cache: 'no-store'
-    });
-    if(!response.ok) return;
-    const body = await response.text();
-    if(body.length > 4096) throw new Error('SafeLink discovery descriptor is too large');
-    const descriptor = JSON.parse(body);
-    return {publicKey: await parseServerPublicKey(descriptor), name: normalizeAppName(descriptor.name)};
+    const {publicKey, name} = await discoverServerIdentity(wsUrl, origin);
+    return {publicKey, name};
   } catch{
     // Older servers may not publish discovery; only the pinned SafeLink key remains.
     return;

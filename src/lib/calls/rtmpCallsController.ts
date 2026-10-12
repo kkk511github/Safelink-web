@@ -12,6 +12,7 @@ import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import RTMP_STATE from '@lib/calls/rtmpState';
 import {logger} from '@lib/logger';
 import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
+import {CAN_USE_PRIMARY_SERVICE_WORKER} from '@config/safelinkServer';
 
 const log = logger('RTMP');
 
@@ -73,7 +74,7 @@ export class RtmpCallsController extends EventListenerBase<{
 
     rootScope.addEventListener('group_call_update', this.onGroupCallUpdate);
 
-    apiManagerProxy.serviceMessagePort.addEventListener('rtmpStreamTime', ({callId, time}) => {
+    apiManagerProxy.serviceMessagePort?.addEventListener('rtmpStreamTime', ({callId, time}) => {
       if(this.currentCall?.call.id === callId) {
         this.currentCall.lastKnownTime = time;
       }
@@ -140,6 +141,7 @@ export class RtmpCallsController extends EventListenerBase<{
   }
 
   public async joinCall(chatId: ChatId) {
+    if(!CAN_USE_PRIMARY_SERVICE_WORKER) throw new Error('当前服务器不支持 Service Worker 直播');
     if(this.currentCall) {
       throw new Error('Already in rtmp call');
     }
@@ -236,6 +238,7 @@ export class RtmpCallsController extends EventListenerBase<{
   }
 
   public rejoinCall(): Promise<void> {
+    if(!CAN_USE_PRIMARY_SERVICE_WORKER) return Promise.reject(new Error('当前服务器不支持 Service Worker 直播'));
     if(this.rejoinPromise) return this.rejoinPromise;
 
     // Only recovery enters the shared call-transition FIFO here. User joins are

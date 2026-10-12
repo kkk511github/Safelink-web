@@ -19,11 +19,12 @@ import SuperMessagePort from '@lib/superMessagePort';
 import objectUrlRegistry from '@lib/mainWorker/objectUrlRegistry';
 import {makeObjectUrlOwner, parseObjectUrlOwner} from '@helpers/objectUrlUtils';
 import {releaseSharedObjectURLsWhere} from '@lib/mainWorker/sharedObjectUrlCache';
+import {CAN_USE_PRIMARY_SERVICE_WORKER} from '@config/safelinkServer';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
 // for testing cases without video streaming
-const CAN_USE_SERVICE_WORKER = !Modes.noServiceWorker;
+const CAN_USE_SERVICE_WORKER = CAN_USE_PRIMARY_SERVICE_WORKER && !Modes.noServiceWorker;
 
 type ManagersByAccount = Record<ActiveAccountNumber, Managers>;
 type StateManagersByAccount = Record<ActiveAccountNumber, AppStateManager>;
@@ -229,6 +230,10 @@ export class AppManagersManager {
   }
 
   public onServiceWorkerPort(event: MessageEvent<any>) {
+    if(!CAN_USE_SERVICE_WORKER) {
+      event.ports[0]?.close();
+      return;
+    }
     if(this.serviceMessagePort) {
       this.serviceMessagePort.detachPort(this._serviceMessagePort);
       this._serviceMessagePort = undefined;

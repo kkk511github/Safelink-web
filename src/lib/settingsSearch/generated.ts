@@ -357,6 +357,7 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppSettingsTab:MenuTelegramStarsTon', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'MenuTelegramStarsTon'},
     {id: 'AppSettingsTab:Premium.Boarding.Title', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'Premium.Boarding.Title'},
     {id: 'AppSettingsTab:QRCode.Title', sectionId: 'AppSettingsTab', kind: 'menu', titleLangKey: 'QRCode.Title'},
+    {id: 'AppSettingsTab:SafeLink.Servers', sectionId: 'AppSettingsTab', kind: 'row', titleLangKey: 'SafeLink.Servers'},
     {id: 'AppSharedFolderTab:BotWebViewCloseAnyway', sectionId: 'AppSharedFolderTab', kind: 'row', titleLangKey: 'BotWebViewCloseAnyway'},
     {id: 'AppSharedFolderTab:CopyLink', sectionId: 'AppSharedFolderTab', kind: 'option', titleLangKey: 'CopyLink'},
     {id: 'AppSharedFolderTab:DeleteLink', sectionId: 'AppSharedFolderTab', kind: 'option', titleLangKey: 'DeleteLink'},
