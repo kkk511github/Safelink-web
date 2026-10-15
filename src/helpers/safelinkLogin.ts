@@ -28,7 +28,7 @@ export function waitForLogout(request: Promise<unknown>, timeoutMs: number): Pro
 
 export function loginRequestWithDeadline<T>(request: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(Object.assign(new Error('SafeLink connection timed out'), {type: 'CONNECTION_TIMEOUT'})), timeoutMs);
+    const timer = setTimeout(() => reject(Object.assign(new Error('Vochat connection timed out'), {type: 'CONNECTION_TIMEOUT'})), timeoutMs);
     request.then(resolve, reject).finally(() => clearTimeout(timer));
   });
 }

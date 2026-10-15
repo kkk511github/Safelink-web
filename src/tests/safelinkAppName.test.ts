@@ -38,27 +38,27 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe('SafeLink app name', () => {
   it.each([undefined, null, '', ' \n\t ', 5, {}])('defaults missing, blank and non-string values: %s', (value) => {
-    expect(normalizeAppName(value)).toBe('SafeLink');
+    expect(normalizeAppName(value)).toBe('Vochat');
   });
 
   it('counts Unicode scalars after trimming, rather than UTF-16 units or graphemes', () => {
     expect(normalizeAppName('  \u4f01\u4e1a\u901a\u8baf  ')).toBe('\u4f01\u4e1a\u901a\u8baf');
     expect(normalizeAppName('x'.repeat(80))).toBe('x'.repeat(80));
-    expect(normalizeAppName('x'.repeat(81))).toBe('SafeLink');
+    expect(normalizeAppName('x'.repeat(81))).toBe('Vochat');
     expect(normalizeAppName(' ' + '\u{1f600}'.repeat(80) + ' ')).toBe('\u{1f600}'.repeat(80));
-    expect(normalizeAppName('\u{1f600}'.repeat(81))).toBe('SafeLink');
+    expect(normalizeAppName('\u{1f600}'.repeat(81))).toBe('Vochat');
     expect(normalizeAppName('e\u0301'.repeat(40))).toBe('e\u0301'.repeat(40));
-    expect(normalizeAppName('e\u0301'.repeat(40) + 'e')).toBe('SafeLink');
+    expect(normalizeAppName('e\u0301'.repeat(40) + 'e')).toBe('Vochat');
   });
 
   it.each(['A\u0000B', 'A\nB', 'A\tB', 'A\u007fB', 'A\u0085B', 'A\u009fB', '\ud800', '\udfff', 'A\ud800B'])('rejects controls and invalid surrogates: %s', (value) => {
-    expect(normalizeAppName(value)).toBe('SafeLink');
+    expect(normalizeAppName(value)).toBe('Vochat');
   });
 
   it('rejects every Unicode control scalar inside a name', () => {
     for(let scalar = 0; scalar <= 0x9f; ++scalar) {
       if(scalar > 0x1f && scalar < 0x7f) continue;
-      expect(normalizeAppName('A' + String.fromCodePoint(scalar) + 'B')).toBe('SafeLink');
+      expect(normalizeAppName('A' + String.fromCodePoint(scalar) + 'B')).toBe('Vochat');
     }
   });
 
@@ -83,17 +83,17 @@ describe('SafeLink app name', () => {
     mocks.listeners.app_config(config('Online Rename'));
     expect(useAppName()()).toBe('Online Rename');
     mocks.listeners.app_config(config(' '));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
     mocks.listeners.app_config(config('x'.repeat(81)));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
     mocks.listeners.app_config(config('Invalid\u0000Name'));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
   });
 
   it('validates cached account names before rendering', async() => {
     const {default: useAppName, initializeAppName} = await import('@stores/appName');
     initializeAppName(config('\ud800'), managers(vi.fn().mockReturnValue(new Promise(() => {}))));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
   });
 
   it('does not let a late discovery response override current config', async() => {
@@ -111,9 +111,9 @@ describe('SafeLink app name', () => {
     const request = deferred<MTAppConfig>();
     const {default: useAppName, initializeAppName} = await import('@stores/appName');
     initializeAppName(config('Wrong Server', 'https://two.example/'), managers(vi.fn().mockReturnValue(request.promise)));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
     mocks.listeners.app_config(config('Another Server', 'https://two.example/'));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
     request.resolve(config('This Server'));
     await Promise.resolve();
     expect(useAppName()()).toBe('This Server');
@@ -127,7 +127,7 @@ describe('SafeLink app name', () => {
     expect(useAppName()()).toBe('Account One');
     mocks.account = 2;
     initializeAppName(undefined, managers(vi.fn().mockReturnValue(newRequest.promise)));
-    expect(useAppName()()).toBe('SafeLink');
+    expect(useAppName()()).toBe('Vochat');
     newRequest.resolve(config('Account Two'));
     await Promise.resolve();
     oldRequest.resolve(config('Late Account One'));

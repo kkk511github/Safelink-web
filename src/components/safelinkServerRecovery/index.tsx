@@ -1,6 +1,7 @@
 import {createSignal, For, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 import {ADD_SERVER_ACCOUNT_QUERY_PARAM, PRIMARY_SERVER_ID, readServerProfiles, SafeLinkServer, SERVER_QUERY_PARAM, WORKER_SERVER_QUERY_PARAM} from '@config/safelinkServer';
+import {DEFAULT_APP_NAME} from '@helpers/safelinkAppName';
 import Modes from '@config/modes';
 import '@/materialize.scss';
 import '@/scss/style.scss';
@@ -29,8 +30,8 @@ export default function showServerRecovery(error: Error) {
   render(() => {
     const [picker, setPicker] = createSignal(false);
     return <main class={styles.wrap}>
-      <img class={styles.logo} src="assets/img/android-chrome-192x192.png" alt="" />
-      <h1>SafeLink</h1>
+      <img class={styles.logo} src="assets/img/vochat.png" alt="" />
+      <h1>{DEFAULT_APP_NAME}</h1>
       <h2>无法选择服务器</h2>
       <p role="alert">{error.message}</p>
       <p>尚未连接任何服务器，账号数据未更改。</p>

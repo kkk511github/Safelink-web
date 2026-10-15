@@ -1,3 +1,4 @@
+import {normalizeAppName} from '@helpers/safelinkAppName';
 import {currentServerId, getServerStoragePrefix, MAX_SERVER_PROFILES, PRIMARY_SERVER_ID, readServerProfiles, SafeLinkServer, SERVER_PROFILES_KEY, validateServer} from '@config/safelinkServer';
 import {SAFELINK_RSA_KEY} from '@config/safelink';
 import selfHostedWebSocketUrl from '@lib/mtproto/selfHostedWebSocketUrl';
@@ -25,7 +26,7 @@ export function getAvailableAccountSlot(accounts: Pick<ServerAccount, 'accountNu
 export async function getPrimaryServer(): Promise<SafeLinkServer> {
   const endpoint = selfHostedWebSocketUrl(import.meta.env.VITE_MTPROTO_WS_URL || '/apiws', location.origin);
   const identity = getCachedServerIdentity(endpoint, location.origin);
-  return {id: PRIMARY_SERVER_ID, endpoint, name: identity?.name || 'SafeLink',
+  return {id: PRIMARY_SERVER_ID, endpoint, name: normalizeAppName(identity?.name),
     fingerprint: identity?.fingerprint || await serverFingerprint(SAFELINK_RSA_KEY), publicKey: identity?.publicKey || SAFELINK_RSA_KEY};
 }
 

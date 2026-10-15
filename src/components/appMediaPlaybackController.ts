@@ -2,13 +2,12 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import type {SearchSuperContext} from '@components/appSearchSuper';
 import rootScope from '@lib/rootScope';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import {IS_APPLE, IS_SAFARI} from '@environment/userAgent';
+import {IS_SAFARI} from '@environment/userAgent';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {getAppWindow} from '@helpers/appWindow';
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import {Document, Message, PhotoSize} from '@layer';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
-import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import I18n from '@lib/langPack';
 import SearchListLoader from '@helpers/searchListLoader';
 import copy from '@helpers/object/copy';
@@ -749,30 +748,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     if(!artwork.length) {
-      if(IS_APPLE) {
-        if(IS_TOUCH_SUPPORTED) {
-          artwork.push({
-            src: `assets/img/apple-touch-icon-precomposed.png`,
-            sizes: '180x180',
-            type: 'image/png'
-          });
-        } else {
-          artwork.push({
-            src: `assets/img/apple-touch-icon.png`,
-            sizes: '180x180',
-            type: 'image/png'
-          });
-        }
-      } else {
-        [72, 96, 144, 192, 256, 384, 512].forEach((size) => {
-          const sizes = `${size}x${size}`;
-          artwork.push({
-            src: `assets/img/android-chrome-${sizes}.png`,
-            sizes,
-            type: 'image/png'
-          });
-        });
-      }
+      artwork.push({src: 'assets/img/vochat.png', sizes: '1254x1254', type: 'image/png'});
     }
 
     const metadata = new MediaMetadata({

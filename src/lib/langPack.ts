@@ -16,6 +16,8 @@ import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import {createSignal} from 'solid-js';
 import commonStateStorage from '@lib/commonStateStorage';
 import Icon from '@components/icon';
+import productDisplayText from '@helpers/productDisplayText';
+import useAppName from '@stores/appName';
 import currencyStarIcon from '@components/currencyStarIcon';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
@@ -344,7 +346,7 @@ namespace I18n {
   const iconsNoWhitespace = '><';
   const iconsKeys = Object.keys(IconMap);
 
-  export function superFormatter(input: string, args?: FormatterArguments, indexHolder?: {i: number}): Exclude<FormatterArgument, FormatterArgument[]>[] {
+  export function superFormatter(input: string, args?: FormatterArguments, indexHolder?: {i: number}, productLiteral?: {marker: string, name: string}): Exclude<FormatterArgument, FormatterArgument[]>[] {
     if(!indexHolder) { // set starting index for arguments without order
       indexHolder = {i: 0};
       const indexes = input.match(/(%|un)\d+/g);
@@ -353,6 +355,7 @@ namespace I18n {
       }
     }
 
+    const literal = (text: string) => productLiteral ? text.split(productLiteral.marker).join(productLiteral.name) : text;
     const out: ReturnType<typeof superFormatter> = [];
     const regExp = new RegExp(`(\\*\\*|__)(.+?)\\1|(\\n)|(\\[.+?\\]\\(.*?\\))|(?:^|\\s)(${iconsKeys.join('|')})(?:$|\\s)|un\\d|%\\d\\$.|%\\S`, 'g');
 
@@ -361,7 +364,7 @@ namespace I18n {
       // console.table({match, p1, p2, offset, string});
 
       if(offset > lastIndex) {
-        out.push(string.slice(lastIndex, offset));
+        out.push(literal(string.slice(lastIndex, offset)));
       }
 
       if(p1) {
@@ -379,7 +382,7 @@ namespace I18n {
           }
         }
 
-        element.append(...superFormatter(p2, args, indexHolder) as any);
+        element.append(...superFormatter(p2, args, indexHolder, productLiteral) as any);
         out.push(element);
       } else if(p3) {
         out.push(document.createElement('br'));
@@ -411,7 +414,7 @@ namespace I18n {
           }
         }
 
-        const formatted = superFormatter(text, args, indexHolder) as any;
+        const formatted = superFormatter(text, args, indexHolder, productLiteral) as any;
         if(!a || typeof(a) === 'string') {
           out.push(...formatted);
         } else {
@@ -446,7 +449,7 @@ namespace I18n {
     });
 
     if(lastIndex !== input.length) {
-      out.push(input.slice(lastIndex));
+      out.push(literal(input.slice(lastIndex)));
     }
 
     return out;
@@ -477,7 +480,11 @@ namespace I18n {
       input = key;
     }
 
-    const result = superFormatter(input, args);
+    const name = useAppName()();
+    let marker = '\uE000product\uE001';
+    while(input.includes(marker) || name.includes(marker)) marker += '\uE001';
+    const template = productDisplayText(input, name, marker);
+    const result = superFormatter(template, args, undefined, {marker, name});
     if(plain) { // * let's try a hack now... (don't want to replace []() entity)
       return result.map((item) => item instanceof HTMLBRElement ? '\n' : (item instanceof Node ? item.textContent : item)).join('') as any;
     } else {

@@ -1,5 +1,6 @@
 import {T_ME_PREFIXES} from '@appManagers/constants';
 
+const PUBLIC_LINK_HOSTS = ['www.vochat.im', 'vochat.im', 'safelink.chat', 'www.safelink.chat'];
 const TELEGRAM_LINK_HOSTS = ['t.me', 'telegram.me'];
 export const TELESCOPE_LINK_HOST = 'telesco.pe';
 
@@ -36,6 +37,8 @@ export function matchUrlHost(url: URL, hosts: string[]) {
  * tests `match?.prefix` instead of `match` treats every non-subdomain link as external.
  */
 export default function matchTelegramUrlHost(url: URL): {prefix?: string} | undefined {
+  if(url && ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password &&
+    PUBLIC_LINK_HOSTS.includes(url.hostname.toLowerCase())) return {};
   const match = matchUrlHost(url, TELEGRAM_LINK_HOSTS);
   if(!match) {
     return;

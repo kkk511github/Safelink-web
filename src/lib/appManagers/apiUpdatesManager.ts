@@ -957,7 +957,7 @@ class ApiUpdatesManager {
             .then((res) => (res.status === 200 && res.ok && res.text()) || Promise.reject())
             .then((text) => {
               const langStr = strs[lang] || strs.en;
-              const pre = `**SafeLink Web${App.suffix} ${langStr} ${newVersion}**\n\n`;
+              const pre = `**Vochat Web ${langStr} ${newVersion}**\n\n`;
 
               text = pre + text;
 

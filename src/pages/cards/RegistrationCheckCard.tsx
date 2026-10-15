@@ -1,4 +1,5 @@
 import {createSignal} from 'solid-js';
+import useAppName from '@stores/appName';
 import Button from '@components/buttonTsx';
 import MediaHeader from '@components/mediaHeader';
 import AuthCard from '@/pages/AuthCard';
@@ -13,7 +14,7 @@ export default function RegistrationCheckCard() {
     try { await toIm(); } finally { setBusy(false); }
   }
   return <AuthCard header={<MediaHeader>
-    <MediaHeader.Title>暂时无法连接 SafeLink</MediaHeader.Title>
+    <MediaHeader.Title>暂时无法连接 {useAppName()()}</MediaHeader.Title>
   </MediaHeader>}>
     <Button class="btn-primary btn-color-primary" disabled={busy()} onClick={retry}>
       {busy() ? '请稍候' : '重试'}

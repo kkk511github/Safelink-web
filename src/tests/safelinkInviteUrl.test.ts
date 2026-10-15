@@ -18,6 +18,18 @@ describe('SafeLink invite URLs', () => {
     expect(wrapUrl('https://example.com/?url=safelink://join?invite=test').onclick).toBeUndefined();
   });
 
+  test.each(['www.vochat.im', 'vochat.im', 'safelink.chat', 'www.safelink.chat'])('opens owned public username links in app: %s', (host) => {
+    (window as any).im = vi.fn();
+    expect(wrapUrl(`https://${host}/alice`).onclick).toBe('im');
+    delete (window as any).im;
+  });
+
+  test.each(['www.vochat.im.evil.test', 'www.vochat.im@evil.test', 'alice.vochat.im'])('keeps lookalike hosts external: %s', (host) => {
+    (window as any).im = vi.fn();
+    expect(wrapUrl(`https://${host}/alice`).onclick).toBeUndefined();
+    delete (window as any).im;
+  });
+
   test('retains internal Telegram protocol compatibility', () => {
     (window as any).tg_join = vi.fn();
     expect(wrapUrl('tg://join?invite=test').onclick).toBe('tg_join');

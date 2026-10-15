@@ -1,8 +1,8 @@
 import {buildTelegramUserQrUrl, paintQrCode} from '@helpers/qrCode/paintQrCode';
 
 describe('paintQrCode', () => {
-  it('builds QR links with the SafeLink or server-configured prefix', () => {
-    expect(buildTelegramUserQrUrl('alice')).toBe('https://safelink.chat/alice');
+  it('builds QR links with the Vochat or server-configured prefix', () => {
+    expect(buildTelegramUserQrUrl('alice')).toBe('https://www.vochat.im/alice');
     expect(buildTelegramUserQrUrl('alice', 'https://links.example.test/')).toBe('https://links.example.test/alice');
   });
   afterEach(() => {
@@ -15,6 +15,8 @@ describe('paintQrCode', () => {
     })));
 
     class QRCodeStylingStub {
+      constructor(public options: any) {}
+
       public _canvasDrawingPromise = Promise.resolve();
 
       public append(host: HTMLElement) {
@@ -33,6 +35,7 @@ describe('paintQrCode', () => {
       QRCodeStylingCtor: QRCodeStylingStub
     });
 
+    expect(result.qrCode.options.image).toMatch(/assets\/img\/vochat\.png$/);
     expect(result.canvas).toBeInstanceOf(HTMLCanvasElement);
     expect(result.canvas.parentElement).toBe(host);
   });

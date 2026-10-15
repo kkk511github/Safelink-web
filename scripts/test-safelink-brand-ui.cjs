@@ -78,8 +78,8 @@ const descriptor = {
       assert.equal(await page.title(), literalName);
       for(const invalidName of ['x'.repeat(81), 'Invalid\u0000Name', '\ud800']) {
         await rename(invalidName);
-        await page.getByRole('heading', {name: 'SafeLink', exact: true}).waitFor();
-        assert.equal(await page.title(), 'SafeLink');
+        await page.getByRole('heading', {name: 'Vochat', exact: true}).waitFor();
+        assert.equal(await page.title(), 'Vochat');
       }
 
       const titles = await page.evaluate(async() => {
@@ -103,8 +103,8 @@ const descriptor = {
       assert.equal(titles.renamed, titles.unread, 'Brand changes must not erase the current unread phase');
       assert.equal(titles.restored, 'Online Rename', 'Unread title must restore the latest brand');
       await rename(' \n\t ');
-      await page.getByRole('heading', {name: 'SafeLink', exact: true}).waitFor();
-      assert.equal(await page.title(), 'SafeLink');
+      await page.getByRole('heading', {name: 'Vochat', exact: true}).waitFor();
+      assert.equal(await page.title(), 'Vochat');
 
       const audit = await (await createAxeBuilder(page, '#auth-flow-root')).disableRules(['color-contrast']).analyze();
       assert.deepEqual(audit.violations, [], 'Native login accessibility semantics must remain valid');

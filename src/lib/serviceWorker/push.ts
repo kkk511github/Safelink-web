@@ -21,7 +21,7 @@ import pause from '@helpers/schedulers/pause';
 import {getWindowClients} from '@helpers/context';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
-const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
+const defaultBaseUrl = location.origin + location.pathname.split('/').slice(0, -1).join('/') + '/';
 let localNotificationsAvailable = true;
 
 export type EncryptedPushNotificationObject = {
@@ -129,7 +129,7 @@ const defaults: PushStorage = {
   push_mute_until: 0,
   push_lang: {
     push_message_nopreview: 'You have a new message',
-    push_message_error: 'Telegram is syncing in the background...',
+    push_message_error: 'Vochat is syncing in the background...',
     push_action_mute1d: 'Mute for 24H',
     push_action_settings: 'Settings'
   },
@@ -194,7 +194,7 @@ async function handlePushNotificationObject(obj: PushNotificationObject) {
     }
 
     const tag = 'fix';
-    const notificationPromise = ctx.registration.showNotification('SafeLink Web', {
+    const notificationPromise = ctx.registration.showNotification('Vochat Web', {
       body: _lang.push_message_error,
       icon: NOTIFICATION_ICON_PATH,
       tag,
@@ -424,7 +424,7 @@ function fireNotification(
 ) {
   obj = fillPushObject(obj);
   const peerId = obj.custom.peerId;
-  let title = obj.title || 'SafeLink';
+  let title = obj.title || 'Vochat';
   let body = obj.description || '';
   let tag = 'peer' + peerId;
 
@@ -437,7 +437,7 @@ function fireNotification(
   }
 
   if(settings?.nopreview || !obj.loc_key) {
-    title = 'SafeLink';
+    title = 'Vochat';
     body = lang.push_message_nopreview;
     tag = 'unknown_peer';
   }

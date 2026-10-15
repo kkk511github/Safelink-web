@@ -55,10 +55,10 @@ if(isDEV) {
 
 const handlebarsPlugin = handlebars({
   context: {
-    title: 'SafeLink Web',
-    description: 'SafeLink is a secure cloud messaging app with a focus on privacy and speed.',
-    url: 'https://web.safelink.chat/',
-    origin: 'https://web.safelink.chat/'
+    title: 'Vochat Web',
+    description: 'Vochat is a secure cloud messaging app with a focus on privacy and speed.',
+    url: 'https://www.vochat.im/web/',
+    origin: 'https://www.vochat.im/web/'
   }
 });
 
@@ -91,8 +91,8 @@ const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
   proxy: process.env.VITE_PREVIEW === '1' ? {
-    '/apiws': {target: 'https://web.safelink.chat', ws: true, changeOrigin: true},
-    '/.well-known/safelink-client.json': {target: 'https://web.safelink.chat', changeOrigin: true}
+    '/apiws': {target: 'https://www.vochat.im', ws: true, changeOrigin: true},
+    '/.well-known/safelink-client.json': {target: 'https://www.vochat.im', changeOrigin: true}
   } : undefined,
   fs: {
     allow: [...SERVER_FS_ALLOW]
@@ -287,7 +287,7 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts']
   },
   server: serverOptions,
-  base: '',
+  base: process.env.VITE_WEB_BASE_PATH || (isDEV ? '/' : '/web/'),
   // Pin the dep-optimizer's scan to the real entry (index.html → src/index.ts).
   // Otherwise Vite auto-globs every *.html (stats.html, public/*.html, the icomoon
   // demo.html) as scan entries, and a parse error in any of them (e.g. the stale

@@ -1,6 +1,5 @@
 import {buildPublicLink} from '@helpers/publicLink';
 import pause from '@helpers/schedulers/pause';
-import textToSvgURL from '@helpers/textToSvgURL';
 
 /**
  * Builds a Telegram-styled QR canvas for `data` using the supplied palette.
@@ -40,18 +39,9 @@ export type PaintQrOptions = {
   QRCodeStylingCtor: any;
 };
 
-// The Telegram logo SVG is identical for a given tint every paint; fetch +
-// recolor + data-URL it once per colour instead of on every QR regenerate.
-const logoUrlCache = new Map<string, Promise<string>>();
-function getLogoUrl(logoColor: string): Promise<string> {
-  let url = logoUrlCache.get(logoColor);
-  if(!url) {
-    url = fetch('assets/img/logo_padded.svg')
-    .then((res) => res.text())
-    .then((text) => textToSvgURL(text.replace(/(fill:).+?(;)/, `$1${logoColor}$2`)));
-    logoUrlCache.set(logoColor, url);
-  }
-  return url;
+// Keep the approved product image unchanged in login and profile QR codes.
+function getLogoUrl(_logoColor: string): Promise<string> {
+  return Promise.resolve(new URL('assets/img/vochat.png', location.href).href);
 }
 
 export async function paintQrCode(options: PaintQrOptions) {

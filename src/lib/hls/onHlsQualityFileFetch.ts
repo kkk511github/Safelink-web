@@ -92,7 +92,7 @@ async function replaceQualityFileWithLocalURLs(fileString: string, accountNumber
   };
   const pathname = `hls_stream/${encodeURIComponent(JSON.stringify(params))}`;
 
-  const targetFileURL = new URL(pathname, location.origin).toString();
+  const targetFileURL = new URL(pathname, new URL(import.meta.env.BASE_URL, location.origin)).toString();
 
   const replacedContent = fileString.replace(new RegExp(regex, 'g'), targetFileURL);
 

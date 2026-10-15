@@ -1,6 +1,6 @@
 import rootScope from '@lib/rootScope';
 
-export const DEFAULT_PUBLIC_LINK_PREFIX = 'https://safelink.chat/';
+export const DEFAULT_PUBLIC_LINK_PREFIX = 'https://www.vochat.im/';
 
 export function normalizePublicLinkPrefix(prefix?: string) {
   const normalized = prefix?.trim() || DEFAULT_PUBLIC_LINK_PREFIX;

@@ -1,32 +1,25 @@
 {
-    "name": "SafeLink Web",
-    "short_name": "SafeLink",
+    "name": "Vochat Web",
+    "short_name": "Vochat",
     "id": "./",
     "scope": "./",
     "start_url": "./",
-    "description": "SafeLink is a secure cloud messaging app with a focus on privacy and speed.",
+    "description": "Vochat is a secure cloud messaging app with a focus on privacy and speed.",
     "icons": [
         {
-            "src": "assets/img/icon_square_192.png?v=jw3mK7G9Ry",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "assets/img/icon_square_384.png?v=jw3mK7G9Ry",
-            "sizes": "384x384",
-            "type": "image/png"
-        },
-        {
-            "src": "assets/img/icon_square_512.png?v=jw3mK7G9Ry",
-            "sizes": "512x512",
-            "type": "image/png"
+            "src": "assets/img/vochat.png?v=fe458742",
+            "sizes": "1254x1254",
+            "type": "image/png",
+            "purpose": "any"
         }
     ],
-    "screenshots" : [{
-        "src": "assets/img/screenshot.jpg",
-        "sizes": "1280x910",
-        "type": "image/jpeg"
-    }],
+    "screenshots": [
+        {
+            "src": "assets/img/screenshot.jpg",
+            "sizes": "1280x910",
+            "type": "image/jpeg"
+        }
+    ],
     "share_target": {
         "action": "./share/",
         "method": "POST",
@@ -35,10 +28,12 @@
             "title": "title",
             "text": "text",
             "url": "url",
-            "files": [{
-                "name": "files",
-                "accept": "*/*"
-            }]
+            "files": [
+                {
+                    "name": "files",
+                    "accept": "*/*"
+                }
+            ]
         }
     },
     "theme_color": "#fffffe",

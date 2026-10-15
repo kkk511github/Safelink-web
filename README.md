@@ -1,5 +1,8 @@
-## Telegram Web K
-Based on Webogram, patched and improved. Available for everyone here: https://web.telegram.org/k/
+## Vochat Web
+
+Vochat is served at https://www.vochat.im/web/. See [deployment instructions](DEPLOYMENT.md).
+
+Based on Telegram Web K and Webogram. Upstream: https://web.telegram.org/k/
 
 
 ### Developing
@@ -17,7 +20,7 @@ Open http://localhost:8080/ in your browser.
 
 #### Running in production
 
-Run `node build` to build the minimized production version of the app. Copy `public` folder contents to your web server.
+Run `pnpm build` to build the production app. Serve `dist/` at `/web/`, with `/web` redirected to `/web/`. See [deployment instructions](DEPLOYMENT.md).
 
 ### Running in docker
 

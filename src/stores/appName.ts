@@ -21,7 +21,7 @@ export function initializeAppName(cachedConfig: MTAppConfig, managers: AppManage
   let hasConfig = false;
   const isCurrent = () => currentGeneration === generation && account === getCurrentAccount();
 
-  setAppName(selectedServer?.name || DEFAULT_APP_NAME);
+  setAppName(normalizeAppName(selectedServer?.name));
   applyConfig = (config) => {
     if(!isCurrent() || !config || config.safelink_server_origin !== server) return;
     hasConfig = true;

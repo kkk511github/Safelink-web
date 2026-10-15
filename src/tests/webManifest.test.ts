@@ -11,7 +11,7 @@ type WebManifest = {
   }>
 };
 
-const EXPECTED_MANIFEST_ID = 'https://web.safelink.chat/';
+const EXPECTED_MANIFEST_ID = 'https://www.vochat.im/web/';
 
 const manifests = [
   'site.webmanifest',
@@ -22,9 +22,9 @@ const manifests = [
 }));
 
 describe('PWA web manifests', () => {
-  test.each(manifests)('$fileName has a stable SafeLink identity without Telegram link scopes', ({manifest}) => {
+  test.each(manifests)('$fileName has a scoped Vochat identity without Telegram link scopes', ({manifest}) => {
     expect(manifest.id).toBe('./');
-    expect(new URL(manifest.id, 'https://web.safelink.chat/').href).toBe(EXPECTED_MANIFEST_ID);
+    expect(new URL(manifest.id, 'https://www.vochat.im/web/').href).toBe(EXPECTED_MANIFEST_ID);
     expect(manifest.start_url).toBe('./');
     expect(manifest.scope).toBe('./');
     expect(manifest.scope_extensions).toBeUndefined();

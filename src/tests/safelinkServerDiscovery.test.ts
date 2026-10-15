@@ -16,10 +16,10 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('SafeLink RSA discovery', () => {
   it('uses only the configured WebSocket server origin', () => {
-    expect(getServerDiscoveryUrl('/apiws', 'https://web.safelink.chat')).toBe('https://web.safelink.chat/.well-known/safelink-client.json');
-    expect(getServerDiscoveryUrl('wss://other.example/apiws?token=secret', 'https://web.safelink.chat')).toBe('https://other.example/.well-known/safelink-client.json');
+    expect(getServerDiscoveryUrl('/apiws', 'https://www.vochat.im')).toBe('https://www.vochat.im/.well-known/safelink-client.json');
+    expect(getServerDiscoveryUrl('wss://other.example/apiws?token=secret', 'https://www.vochat.im')).toBe('https://other.example/.well-known/safelink-client.json');
     expect(getServerDiscoveryUrl('/apiws', 'http://localhost:9047')).toBe('http://localhost:9047/.well-known/safelink-client.json');
-    expect(() => getServerDiscoveryUrl('ws://other.example/apiws', 'https://web.safelink.chat')).toThrow();
+    expect(() => getServerDiscoveryUrl('ws://other.example/apiws', 'https://www.vochat.im')).toThrow();
   });
 
   it('parses the server PKCS#1 key through WebCrypto', async() => {
@@ -37,25 +37,25 @@ describe('SafeLink RSA discovery', () => {
   it('keeps the pinned key when discovery is unavailable', async() => {
     const fetchMock = vi.fn().mockResolvedValue({ok: false});
     vi.stubGlobal('fetch', fetchMock);
-    expect(await discoverServerPublicKey('/apiws', 'https://web.safelink.chat')).toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledWith('https://web.safelink.chat/.well-known/safelink-client.json',
+    expect(await discoverServerPublicKey('/apiws', 'https://www.vochat.im')).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith('https://www.vochat.im/.well-known/safelink-client.json',
       expect.objectContaining({redirect: 'error', credentials: 'omit'}));
   });
 
   it('reads the name field without changing RSA discovery', async() => {
     vi.stubGlobal('crypto', webcrypto);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify({...descriptor(), name: '  Server Name  '})}));
-    expect(await discoverServer('/apiws', 'https://web.safelink.chat')).toEqual({publicKey: SAFELINK_RSA_KEY, name: 'Server Name'});
+    expect(await discoverServer('/apiws', 'https://www.vochat.im')).toEqual({publicKey: SAFELINK_RSA_KEY, name: 'Server Name'});
   });
 
   it('caches only verified identities for readonly details without replacing them on failed validation', async() => {
     vi.stubGlobal('crypto', webcrypto);
     const body = {...descriptor(), name: 'Verified Server'};
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify(body)}));
-    const identity = await discoverServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat');
-    expect(getCachedServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat')).toEqual(identity);
+    const identity = await discoverServerIdentity('wss://cached.example/apiws', 'https://www.vochat.im');
+    expect(getCachedServerIdentity('wss://cached.example/apiws', 'https://www.vochat.im')).toEqual(identity);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, text: async() => JSON.stringify({...body, server_id: '0'.repeat(64)})}));
-    await expect(discoverServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat')).rejects.toThrow('identity');
-    expect(getCachedServerIdentity('wss://cached.example/apiws', 'https://web.safelink.chat')).toEqual(identity);
+    await expect(discoverServerIdentity('wss://cached.example/apiws', 'https://www.vochat.im')).rejects.toThrow('identity');
+    expect(getCachedServerIdentity('wss://cached.example/apiws', 'https://www.vochat.im')).toEqual(identity);
   });
 });
